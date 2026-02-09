@@ -29,7 +29,7 @@ void main()
 
     oi_init(sensor_data);
     lcd_init();
-
+    //task1(sensor_data, &tunes);
     task3(sensor_data, &tunes);
     //benchAngle(sensor_data, &tunes, 4);
 
@@ -107,7 +107,7 @@ void move_forward(oi_t *sensor_data, movementTunes *t, double distance_mm){
             oi_update(sensor_data);
             sum += sensor_data -> distance * t->driveDistanceMultiplier;
 
-            lcd_printf("dist: %f", sum);
+            lcd_printf("dist: %f", sum * t->driveDistanceMultiplier + 1);
         }
     oi_setWheels(0,0);
 }
