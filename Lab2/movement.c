@@ -3,6 +3,7 @@
  *
  *  Created on: Feb 3, 2026
  *      Author: mmistry
+ *      Author: iwsteele
  */
 
 #include "open_interface.h"
@@ -22,7 +23,7 @@ void main()
     oi_t *sensor_data = oi_alloc();
 
     struct movementTunes tunes;
-    tunes.driveDistanceMultiplier = 0.998;
+    tunes.driveDistanceMultiplier = 0.9965;
     tunes.turnAngleMultiplier = 0.925;
     tunes.driveDriftMultiplier = 0.0;
 
@@ -55,8 +56,6 @@ void task2(oi_t *sensor_data, movementTunes *t){
 
 void task3(oi_t *sensor_data, movementTunes *t){
     double accumDistance = 0;
-    double distBeforeEscape = 0;
-    double distAfterEscape = 0;
     oi_update(sensor_data);
 
     while(accumDistance < 2000){
@@ -66,13 +65,13 @@ void task3(oi_t *sensor_data, movementTunes *t){
             oi_setWheels(50,50);
         }
         else if (sensor_data -> bumpLeft == 1){
-            distBeforeEscape = accumDistance;
             escapeRight(sensor_data, t);
-            distAfterEscape = accumDistance;
+            accumDistance += -40;
         }
 
         else if (sensor_data -> bumpRight == 1){
             escapeLeft(sensor_data, t);
+            accumDistance += -40;
         }
         accumDistance += sensor_data -> distance;
         lcd_printf("A. dist: %f", accumDistance);

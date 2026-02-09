@@ -1,0 +1,4 @@
+bot 26:
+    tunes.driveDistanceMultiplier = 0.9965;
+    tunes.turnAngleMultiplier = 0.925;
+    tunes.driveDriftMultiplier = 0.0;
