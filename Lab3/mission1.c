@@ -22,14 +22,13 @@ void main(){
 }
 
 void getMessage(){
-    lcd_printf("test 1!");
+    int messageLength = 50;
+    char message[messageLength + 1] = ""; // create message and set it to all zeros?
     int currentChar;
-    char message[50];
     int charIndex = 0;
+
     currentChar = cyBot_getByte();
 
-
-    lcd_printf("test 2!");
     while (charIndex < 50 && currentChar != '\0' ){
         message[charIndex] = currentChar;
         lcd_printf("Message: %s", message); // displays input
