@@ -18,5 +18,7 @@
 
 void getMessage();
 
+void findObject()
+
 
 #endif /* MISSION1_H_ */
