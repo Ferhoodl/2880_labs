@@ -14,14 +14,20 @@
 #include "cyBot_uart.h"
 #include "mission1.h"
 
+
 void main(){
     lcd_init();
     cyBot_uart_init();
-    cyBOT_init_Scan(0111);
+    cyBOT_init_Scan(0b0111);
 
-    cyBOT_SERVO_cal();
-    //findObject();
+    right_calibration_value = 269500;
+    left_calibration_value = 1204000;
+
+    char readings[91];
+
+    scanField(readings);
     //getMessage();
+    int test = 0;
 }
 
 void getMessage(){
@@ -41,16 +47,22 @@ void getMessage(){
 
 }
 
-void findObject(){
+void scanField(char readings[]){
     float distances[91];
 
-    cyBOT_Scan_t *scanStruct;
-    cyBOT_Scan(90, &scanStruct);
+    cyBOT_Scan_t scanStruct;
 
-    /*
-    currentAngle = 0;
-    for()
-    */
+    int currentAngle;
+    for(currentAngle = 0; currentAngle < 180; currentAngle += 2){
+        cyBOT_Scan(currentAngle, &scanStruct);
+        distances[currentAngle/2] = scanStruct.sound_dist;
+        if(distances[currentAngle/2] > 100){
+            readings[currentAngle/2] = ' ';
 
+        }else{
+            readings[currentAngle/2] = '#';
+        }
+    }
+    int test = 0;
 }
 

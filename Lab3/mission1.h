@@ -18,7 +18,7 @@
 
 void getMessage();
 
-void findObject()
+void scanField(char readings[]);
 
 
 #endif /* MISSION1_H_ */

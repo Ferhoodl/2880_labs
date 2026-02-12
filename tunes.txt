@@ -5,3 +5,8 @@ bot 26:
 
 calibration: 306250 right
 	         1303750 left
+
+bot 04:
+	servo calibration:
+		right: 269500
+		left: 1204000
