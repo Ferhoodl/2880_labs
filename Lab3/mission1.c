@@ -40,12 +40,15 @@ void main(){
 
 
     scanField(readings, distances);
-    analyzeReadings(readings, distances);
+
+
+
+    analyzeReadingsAndTurn(readings, distances);
     //getMessage();
     int test = 0;
 }
 
-void analyzeReadings(char readings[], float distances[]) {
+void analyzeReadingsAndTurn(char readings[], float distances[]) {
     ScanData scans[5];
     int currentObject = 0;
     int inObject = 0;
@@ -69,8 +72,8 @@ void analyzeReadings(char readings[], float distances[]) {
             int centerIndex = startIndex + widthSamples / 2;
 
             scans[currentObject].objectNum = currentObject;
-            scans[currentObject].angularWidth = widthSamples * 2;  // degrees
-            scans[currentObject].angle = centerIndex * 2;          // degrees
+            scans[currentObject].angularWidth = widthSamples * 2;
+            scans[currentObject].angle = centerIndex * 2;
             scans[currentObject].distance = distances[centerIndex];
 
             inObject = 0;
@@ -81,6 +84,26 @@ void analyzeReadings(char readings[], float distances[]) {
             currentObject++;
         }
     }
+    scans[currentObject].objectNum = -1; // designate the next object as nothing
+    scans[currentObject].angle = -1;
+    scans[currentObject].distance = -1;
+    scans[currentObject].angularWidth = -1;
+    int object;
+    int numObjects = currentObject;
+    int smallestObject = -1;
+    int smallestAngle = 999;
+    for(object = 0; object < numObjects; object +=){
+        if(scans[object].angularWidth < smallestAngle){
+            smallestObject = object;
+        }
+    }
+    int AngleToTurn = 90 - scans[object].angle;
+    if(AngleToTurn > 0){
+        turnRight();
+    }else if (AngleToTurn < 0){
+        turnLeft();
+    }
+
 }
 
 
