@@ -13,6 +13,7 @@
 #include "cyBot_Scan.h"
 #include "cyBot_uart.h"
 #include "mission1.h"
+#include "timer.h"
 
 typedef struct {
     int objectNum;
@@ -21,14 +22,31 @@ typedef struct {
     int angularWidth;
 } ScanData;
 
+struct movementTunes{
+    double turnAngleMultiplier;       // 1 is nothing. <1 is less angle, >1 is more angle.
+    double driveDistanceMultiplier;   // 1 is nothing. <1 is less distance, >1 is more distance.
+    double driveDriftMultiplier;      // 0 is nothing. <0 is correct to the left; >0 is correct to the right
+};
+
+
 
 void main(){
+    oi_t *sensor_data = oi_alloc();
+    oi_init(sensor_data);
     lcd_init();
+    timer_init();
     cyBot_uart_init();
     cyBOT_init_Scan(0b0111);
+    oi_setWheels(0,0);
 
-    right_calibration_value = 269500;
-    left_calibration_value = 1204000;
+    right_calibration_value = 280000;
+    left_calibration_value = 1288000;
+
+    struct movementTunes tunes14;
+    tunes14.driveDistanceMultiplier = 1;
+    tunes14.turnAngleMultiplier = 1;
+    tunes14.driveDriftMultiplier = 0.0;
+
 
     char readings[91];
     float distances[91];
@@ -41,15 +59,11 @@ void main(){
 
     scanField(readings, distances);
 
-
-
-    analyzeReadingsAndTurn(readings, distances);
-    //getMessage();
-    int test = 0;
+    analyzeReadingsAndTurn(readings, distances, sensor_data, &tunes14);
 }
 
-void analyzeReadingsAndTurn(char readings[], float distances[]) {
-    ScanData scans[5];
+void analyzeReadingsAndTurn(char readings[], float distances[], oi_t *sensor_data, movementTunes *t){
+    ScanData scans[10];
     int currentObject = 0;
     int inObject = 0;
     int startIndex = 0;
@@ -84,24 +98,27 @@ void analyzeReadingsAndTurn(char readings[], float distances[]) {
             currentObject++;
         }
     }
-    scans[currentObject].objectNum = -1; // designate the next object as nothing
-    scans[currentObject].angle = -1;
-    scans[currentObject].distance = -1;
-    scans[currentObject].angularWidth = -1;
+    scans[currentObject].objectNum = 999; // designate the next object as nothing
+    scans[currentObject].angle = 999;
+    scans[currentObject].distance = 999;
+    scans[currentObject].angularWidth = 999;
     int object;
     int numObjects = currentObject;
     int smallestObject = -1;
     int smallestAngle = 999;
-    for(object = 0; object < numObjects; object +=){
+    for(object = 0; object < numObjects; object += 1){
         if(scans[object].angularWidth < smallestAngle){
             smallestObject = object;
+            smallestAngle = scans[object].angularWidth;
         }
     }
-    int AngleToTurn = 90 - scans[object].angle;
-    if(AngleToTurn > 0){
-        turnRight();
-    }else if (AngleToTurn < 0){
-        turnLeft();
+    int angleToTurn = 90 - scans[smallestObject].angle;
+    if(angleToTurn > 0){
+        turn_right(sensor_data, t, abs(angleToTurn));
+        move_forward(sensor_data, t, scans[smallestObject].distance);
+    }else if (angleToTurn < 0){
+        turn_left(sensor_data, t, abs(angleToTurn));
+        move_forward(sensor_data, t, scans[smallestObject].distance);
     }
 
 }
@@ -159,6 +176,5 @@ void scanField(char readings[], float distances[]){
         sprintf(temp, "Angle: %d, Distance: %f\n\r", currentAngle, currentDist);
         sendMessage(temp);
     }
-    int test = 0;
 }
 

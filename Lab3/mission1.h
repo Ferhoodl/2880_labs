@@ -22,7 +22,7 @@ void scanField(char readings[], float distances[]);
 
 void sendMessage(char *c);
 
-void analyzeReadingsAndTurn(char readings[], float distances[]);
+void analyzeReadingsAndTurn(char readings[], float distances[], oi_t *sensor_data, movementTunes *t);
 
 
 #endif /* MISSION1_H_ */
