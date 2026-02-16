@@ -18,7 +18,11 @@
 
 void getMessage();
 
-void scanField(char readings[]);
+void scanField(char readings[], float distances[]);
+
+void sendMessage(char *c);
+
+void analyzeReadings(char readings[], float distances[]);
 
 
 #endif /* MISSION1_H_ */

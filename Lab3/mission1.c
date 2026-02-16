@@ -14,6 +14,13 @@
 #include "cyBot_uart.h"
 #include "mission1.h"
 
+typedef struct {
+    int objectNum;
+    int angle;
+    double distance;
+    int angularWidth;
+} ScanData;
+
 
 void main(){
     lcd_init();
@@ -24,11 +31,58 @@ void main(){
     left_calibration_value = 1204000;
 
     char readings[91];
+    float distances[91];
 
-    scanField(readings);
+    char msg = cyBot_getByte();
+    while(msg != 's'){
+        msg = cyBot_getByte();
+    }
+
+
+    scanField(readings, distances);
+    analyzeReadings(readings, distances);
     //getMessage();
     int test = 0;
 }
+
+void analyzeReadings(char readings[], float distances[]) {
+    ScanData scans[5];
+    int currentObject = 0;
+    int inObject = 0;
+    int startIndex = 0;
+    int widthSamples = 0;
+
+    int i = 0;
+    for (i = 0; i < 90; i++) {
+        if (!inObject && readings[i] == '#') {
+            // Start of a new object
+            inObject = 1;
+            startIndex = i;
+            widthSamples = 1;
+
+        } else if (inObject && readings[i] == '#') {
+            // Continuing object
+            widthSamples++;
+
+        } else if (inObject && readings[i] == ' ') {
+            // End of object
+            int centerIndex = startIndex + widthSamples / 2;
+
+            scans[currentObject].objectNum = currentObject;
+            scans[currentObject].angularWidth = widthSamples * 2;  // degrees
+            scans[currentObject].angle = centerIndex * 2;          // degrees
+            scans[currentObject].distance = distances[centerIndex];
+
+            inObject = 0;
+
+            char temp[150];
+            sprintf(temp, "Object Number: %d, Angle: %d, Distance: %f, angular width: %d\n\r", scans[currentObject].objectNum, scans[currentObject].angle, scans[currentObject].distance, scans[currentObject].angularWidth);
+            sendMessage(temp);
+            currentObject++;
+        }
+    }
+}
+
 
 void getMessage(){
     int messageLength = 50;
@@ -47,21 +101,40 @@ void getMessage(){
 
 }
 
-void scanField(char readings[]){
-    float distances[91];
+void sendMessage(char *c) {
+    while (*c != '\0') {
+        cyBot_sendByte(*c);
+        c += 1;
+    }
+}
+
+
+void scanField(char readings[], float distances[]){
 
     cyBOT_Scan_t scanStruct;
 
     int currentAngle;
+    double currentDist;
+
+    //these give the servo time to get over to angle 0 so we don't get bad data.
+    cyBOT_Scan(0, &scanStruct);
+    cyBOT_Scan(0, &scanStruct);
+    cyBOT_Scan(0, &scanStruct);
+    // end of maintenance polls
+
     for(currentAngle = 0; currentAngle < 180; currentAngle += 2){
         cyBOT_Scan(currentAngle, &scanStruct);
-        distances[currentAngle/2] = scanStruct.sound_dist;
-        if(distances[currentAngle/2] > 100){
+        currentDist = scanStruct.sound_dist;
+        distances[currentAngle/2] = currentDist;
+        if(distances[currentAngle/2] > 250){
             readings[currentAngle/2] = ' ';
 
         }else{
             readings[currentAngle/2] = '#';
         }
+        char temp[100];
+        sprintf(temp, "Angle: %d, Distance: %f\n\r", currentAngle, currentDist);
+        sendMessage(temp);
     }
     int test = 0;
 }
