@@ -39,8 +39,9 @@ void main(){
     cyBOT_init_Scan(0b0111);
     oi_setWheels(0,0);
 
-    right_calibration_value = 280000;
-    left_calibration_value = 1288000;
+
+    right_calibration_value = 285250;
+    left_calibration_value = 1240750;
 
     struct movementTunes tunes14;
     tunes14.driveDistanceMultiplier = 1;
@@ -56,10 +57,10 @@ void main(){
         msg = cyBot_getByte();
     }
 
-
     scanField(readings, distances);
 
     analyzeReadingsAndTurn(readings, distances, sensor_data, &tunes14);
+
 }
 
 void analyzeReadingsAndTurn(char readings[], float distances[], oi_t *sensor_data, movementTunes *t){
@@ -107,18 +108,18 @@ void analyzeReadingsAndTurn(char readings[], float distances[], oi_t *sensor_dat
     int smallestObject = -1;
     int smallestAngle = 999;
     for(object = 0; object < numObjects; object += 1){
-        if(scans[object].angularWidth < smallestAngle){
+        if(scans[object].angularWidth < smallestAngle && scans[object].angularWidth > 6){
             smallestObject = object;
             smallestAngle = scans[object].angularWidth;
         }
     }
     int angleToTurn = 90 - scans[smallestObject].angle;
     if(angleToTurn > 0){
-        turn_right(sensor_data, t, abs(angleToTurn));
-        move_forward(sensor_data, t, scans[smallestObject].distance);
+        turn_right(sensor_data, t, abs(angleToTurn) * .8);
+        move_forward(sensor_data, t, scans[smallestObject].distance*10 * .8);
     }else if (angleToTurn < 0){
-        turn_left(sensor_data, t, abs(angleToTurn));
-        move_forward(sensor_data, t, scans[smallestObject].distance);
+        turn_left(sensor_data, t, abs(angleToTurn) * .8);
+        move_forward(sensor_data, t, scans[smallestObject].distance*10 * .8);
     }
 
 }

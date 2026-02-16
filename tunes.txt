@@ -10,3 +10,15 @@ bot 04:
 	servo calibration:
 		right: 269500
 		left: 1204000
+
+bot 14:
+    right_calibration_value = 280000;
+    left_calibration_value = 1288000;
+
+bot 15:
+    right_calibration_value = 290500;
+    left_calibration_value = 1288000;
+
+bot 05:
+    right_calibration_value = 285250;
+    left_calibration_value = 1240750;
