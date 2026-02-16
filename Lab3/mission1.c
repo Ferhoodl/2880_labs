@@ -126,7 +126,7 @@ void scanField(char readings[], float distances[]){
         cyBOT_Scan(currentAngle, &scanStruct);
         currentDist = scanStruct.sound_dist;
         distances[currentAngle/2] = currentDist;
-        if(distances[currentAngle/2] > 250){
+        if(distances[currentAngle/2] > 100){
             readings[currentAngle/2] = ' ';
 
         }else{
