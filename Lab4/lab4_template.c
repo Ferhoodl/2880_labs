@@ -12,9 +12,8 @@
 #include "lcd.h"
 #include "cyBot_uart.h"  // Functions for communicating between CyBot and Putty (via UART)
                          // PuTTy: Baud=115200, 8 data bits, No Flow Control, No Parity, COM1
+#include "mission1.h"
 
-#warning "Possible unimplemented functions"
-#define REPLACEME 0
 
 
 
@@ -26,22 +25,32 @@ int main(void) {
 
 	// YOUR CODE HERE
 
-    int buttonPressed;
+    uint8_t buttonPressed;
+    uint8_t lastButtonPressed;
+    char temp[100];
 	
 	while(1){
-	    button = button_getButton;
-	    if(buttonPressed != 0){
-	        lcd_clear();
-	        lcdprintf("Button %d pressed, button");
+	    buttonPressed = button_getButton();
+	    if(lastButtonPressed != buttonPressed){
+	        if(buttonPressed > 0){
+	            lcd_clear();
+	            lcd_printf("Button %d pressed", buttonPressed);
 
-	        while(button_getButton() != 0);
+	            sprintf(temp, "Button %d is pressed\n\r", buttonPressed);
+	            sendMessage(temp);
+            }else{
+                lcd_clear();
+                lcd_printf("No button pressed.");
+
+                sprintf(temp, "No button pressed.\n\r");
+                sendMessage(temp);
+	        }
+
+
+
+	        lastButtonPressed = buttonPressed;
 	    }
-
-      // YOUR CODE HERE
-
-
-
-
 	}
 
 }
+

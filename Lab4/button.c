@@ -15,6 +15,7 @@
 // GPIO_PORTE_DATA_R -- Name of the memory mapped register for GPIO Port E,
 // which is connected to the push buttons
 #include "button.h"
+#include "timer.h"
 
 
 /**
@@ -22,6 +23,7 @@
  */
 void button_init() {
 	static uint8_t initialized = 0;
+	timer_init();
 
 	//Check if already initialized
 	if(initialized){
@@ -29,7 +31,7 @@ void button_init() {
 	}
 
 	// delete warning after implementing
-	#warning "Unimplemented function: void button_init()"
+	//#warning "Unimplemented function: void button_init()"
 
 	// Reading: To initialize and configure GPIO PORTE, visit pg. 656 in the
 	// Tiva datasheet.
@@ -52,6 +54,11 @@ void button_init() {
 	//    do not modify other PORTE enables
 	// GPIO_PORTE_DEN_R |=
 
+	SYSCTL_RCGCGPIO_R |= 0b010000;     // turn on the system clock to port e.
+	timer_waitMicros(1);               // delay for previous instruction to finish?
+	GPIO_PORTE_DIR_R &= 0xFFFFFFF0;    // set buttons 0, 1, 2, and 3 as input
+	GPIO_PORTE_DEN_R |= 0b1111;        // enable lines 0, 1, 2, and 3
+
 
 	initialized = 1;
 }
@@ -64,7 +71,7 @@ void button_init() {
  */
 uint8_t button_getButton() {
 
-	#warning "Unimplemented function: uint8_t button_getButton(void)"	// delete warning after implementing
+	//#warning "Unimplemented function: uint8_t button_getButton(void)"	// delete warning after implementing
 
 	//
 	// DELETE ME - How bitmasking works
@@ -99,6 +106,31 @@ uint8_t button_getButton() {
 	// TODO: Write code below -- Return the rightmost button position pressed
 
 	// INSERT CODE HERE!
+
+    int button0Val;
+    int button1Val;
+    int button2Val;
+    int button3Val;
+
+    int masked0 = GPIO_PORTE_DATA_R | 0b1110;
+    int masked1 = GPIO_PORTE_DATA_R | 0b1101;
+    int masked2 = GPIO_PORTE_DATA_R | 0b1011;
+    int masked3 = GPIO_PORTE_DATA_R | 0b0111;
+
+    if(masked0 == 0b1110){button0Val = 1; }else{button0Val = 0; }
+    if(masked1 == 0b1101){button1Val = 1; }else{button1Val = 0; }
+    if(masked2 == 0b1011){button2Val = 1; }else{button2Val = 0; }
+    if(masked3 == 0b0111){button3Val = 1; }else{button3Val = 0; }
+
+    if(button3Val){
+        return 4;
+    }else if(button2Val){
+        return 3;
+    }else if(button1Val){
+        return 2;
+    }else if(button0Val){ // 0 is the port, 1 is the label on the button
+        return 1;
+    }
 
 	return 0; // EDIT ME
 }
