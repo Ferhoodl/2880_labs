@@ -15,7 +15,7 @@
 void uart_init(void){
 	//TODO
   //enable clock to GPIO port B
-  SYSCTL_RCGCGPIO_R |= ???
+  SYSCTL_RCGCGPIO_R |= 0x02;
 
   //enable clock to UART1
   SYSCTL_RCGCUART_R |= ???
