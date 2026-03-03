@@ -7,7 +7,7 @@
 *   @author
 *   @date
 */
-/*
+
 #include <inc/tm4c123gh6pm.h>
 #include <stdint.h>
 #include "uart.h"
@@ -18,27 +18,28 @@ void uart_init(void){
   SYSCTL_RCGCGPIO_R |= 0x02;
 
   //enable clock to UART1
-  SYSCTL_RCGCUART_R |= ???
+  SYSCTL_RCGCUART_R |= 0x02; // Bai textbook page 662
 
   //wait for GPIOB and UART1 peripherals to be ready
-  while ((SYSCTL_PRGPIO_R & ???) == 0) {};
+  while ((SYSCTL_PRGPIO_R & 0x02) == 0) {};
   while ((SYSCTL_PRUART_R & ???) == 0) {};
 
   //enable alternate functions on port B pins
-  GPIO_PORTB_AFSEL_R |= ???
+  GPIO_PORTB_AFSEL_R |= 0x03;
 
   //enable digital functionality on port B pins
-  GPIO_PORTB_DEN_R |= ???
+  GPIO_PORTB_DEN_R |= 0x03;
 
   //enable UART1 Rx and Tx on port B pins
-  GPIO_PORTB_PCTL_R = ???
+  //GPIO_PORTB_PCTL_R = ??? <-- This line was is from this file, but the line below is from the lab5_template that we originally wrote
+  GPIO_PORTB_PCTL_R &= 0xFFFFFF00;
 
   //calculate baud rate
-  uint16_t iBRD = ???; //use equations
-  uint16_t fBRD = ???; //use equations
+  uint16_t iBRD = 0x8; //use equations (got values from Bai textbook page 662)
+  uint16_t fBRD = 0x2c; //use equations (got values from Bai textbook page 662)
 
   //turn off UART1 while setting it up
-  UART1_CTL_R &= ???
+  UART1_CTL_R &= 0xFFFFFFFE; // got from Bai textbook page 662
 
   //set baud rate
   //note: to take effect, there must be a write to LCRH after these assignments
@@ -47,7 +48,7 @@ void uart_init(void){
 
   //set frame, 8 data bits, 1 stop bit, no parity, no FIFO
   //note: this write to LCRH must be after the BRD assignments
-  UART1_LCRH_R = ???
+  UART1_LCRH_R = 0x60; // got from Bai textbook page 662
 
   //use system clock as source
   //note from the datasheet UARTCCC register description:
@@ -61,7 +62,7 @@ void uart_init(void){
   //Good to be explicit in your code
   //Be careful to not clear RX and TX enable bits
   //(either preserve if already set or set them)
-  UART1_CTL_R = ???
+  UART1_CTL_R |= 0x1; // UART1_CTL_R = ??? was the original line, but page 662 of Bai textbook uses what is not commented
 
 }
 
@@ -76,4 +77,4 @@ char uart_receive(void){
 void uart_sendStr(const char *data){
 	//TODO for reference see lcd_puts from lcd.c file
 }
-*/
+
