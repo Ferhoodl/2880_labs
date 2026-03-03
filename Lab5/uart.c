@@ -32,7 +32,9 @@ void uart_init(void){
 
   //enable UART1 Rx and Tx on port B pins
   //GPIO_PORTB_PCTL_R = ??? <-- This line was is from this file, but the line below is from the lab5_template that we originally wrote
-  GPIO_PORTB_PCTL_R &= 0xFFFFFF00;
+  //GPIO_PORTB_PCTL_R |= 0x00000011;
+  GPIO_PORTB_PCTL_R &= 0xFFFFFF00;       // Force 0's in the desired locations
+  GPIO_PORTB_PCTL_R |= 0x00000011;       // Force 1's in the desired locations
 
   //calculate baud rate
   uint16_t iBRD = 8; //use equations (got values from Bai textbook page 662)
@@ -54,7 +56,7 @@ void uart_init(void){
   //note from the datasheet UARTCCC register description:
   //field is 0 (system clock) by default on reset
   //Good to be explicit in your code
-  UART1_CC_R = 0x0;
+  UART1_CC_R = 0x00;
 
   //re-enable UART1 and also enable RX, TX (three bits)
   //note from the datasheet UARTCTL register description:
@@ -62,22 +64,20 @@ void uart_init(void){
   //Good to be explicit in your code
   //Be careful to not clear RX and TX enable bits
   //(either preserve if already set or set them)
-  UART1_CTL_R |= 0x1; // UART1_CTL_R = ??? was the original line, but page 662 of Bai textbook uses what is not commented
+  UART1_CTL_R |= 0b1100000001; // UART1_CTL_R = ??? was the original line, but page 662 of Bai textbook uses what is not commented
 
 }
 
 void uart_sendChar(char data){
-	while((UART1_FR_R & 0x20) != 0){
-	    UART1_DR_R = data;
-	    }
+	while((UART1_FR_R & 0x20) != 0);
+    UART1_DR_R = data;
 
 	}
 
   char uart_receive(void){
-    while ((UART1_FR_R & 0x10) != 0) {
-       return (char) (UART1_DR_R & 0xFF);
-    }
- return 0;
+    while ((UART1_FR_R & 0x10) != 0);
+    return (char) (UART1_DR_R & 0xFF);
+
 }
 
 void uart_sendStr(const char *data) {
