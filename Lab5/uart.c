@@ -67,7 +67,9 @@ void uart_init(void){
 }
 
 void uart_sendChar(char data){
-	//TODO
+	while(UART1_FR_R != 0){
+
+	}
 }
 
 char uart_receive(void){
