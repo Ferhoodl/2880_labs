@@ -22,7 +22,7 @@ void uart_init(void){
 
   //wait for GPIOB and UART1 peripherals to be ready
   while ((SYSCTL_PRGPIO_R & 0x02) == 0) {};
-  while ((SYSCTL_PRUART_R & ???) == 0) {};
+  while ((SYSCTL_PRUART_R & 0x02) == 0) {};
 
   //enable alternate functions on port B pins
   GPIO_PORTB_AFSEL_R |= 0x03;
@@ -35,8 +35,8 @@ void uart_init(void){
   GPIO_PORTB_PCTL_R &= 0xFFFFFF00;
 
   //calculate baud rate
-  uint16_t iBRD = 0x8; //use equations (got values from Bai textbook page 662)
-  uint16_t fBRD = 0x2c; //use equations (got values from Bai textbook page 662)
+  uint16_t iBRD = 8; //use equations (got values from Bai textbook page 662)
+  uint16_t fBRD = 44; //use equations (got values from Bai textbook page 662)
 
   //turn off UART1 while setting it up
   UART1_CTL_R &= 0xFFFFFFFE; // got from Bai textbook page 662
@@ -67,16 +67,24 @@ void uart_init(void){
 }
 
 void uart_sendChar(char data){
-	while(UART1_FR_R != 0){
+	while((UART1_FR_R & 0x20) != 0){
+	    UART1_DR_R = data;
+	    }
 
 	}
+
+  char uart_receive(void){
+    while ((UART1_FR_R & 0x10) != 0) {
+       return (char) (UART1_DR_R & 0xFF);
+    }
+ return 0;
 }
 
-char uart_receive(void){
-	//TODO
+void uart_sendStr(const char *data) {
+    while (*data != '\0') {
+        uart_sendChar(*data);
+        data++;
+    }
 }
 
-void uart_sendStr(const char *data){
-	//TODO for reference see lcd_puts from lcd.c file
-}
 

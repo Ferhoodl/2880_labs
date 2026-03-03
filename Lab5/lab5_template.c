@@ -19,6 +19,7 @@
 // PuTTy: Baud=115200, 8 data bits, No Flow Control, No Parity, COM1
 #include "cyBot_Scan.h"  // Scan using CyBot servo and sensors
 #include "mission1.h"
+#include "uart.h"
 
 int main(void)
 {
@@ -42,8 +43,9 @@ int main(void)
 
     // Or see the notes for a coding alternative to assign a value to the PCTL field
 
+    uart_init();
     // (Uncomment ME for UART init part of lab)
-    cyBot_uart_init_last_half();  // Complete the UART device configuration
+    //cyBot_uart_init_last_half();  // Complete the UART device configuration
 
     // Initialize the scan
     cyBOT_init_Scan(0b0111);
@@ -51,36 +53,50 @@ int main(void)
     right_calibration_value = 290500;
     left_calibration_value = 1288000;
 
+    /*
     uint8_t buttonPressed;
     uint8_t lastButtonPressed = 0;
     char temp[50];
 
     lcd_printf("No button pressed.");
     sprintf(temp, "No button pressed.\n\r");
-    sendMessage(temp);
+    uart_sendStr(temp);
+    */
+    char currentChar;
 
     while (1)
     {
-        buttonPressed = button_getButton();
-        if (lastButtonPressed != buttonPressed)
-        {
-            if (buttonPressed > 0)
-            {
-                lcd_clear();
-                lcd_printf("Button %d pressed", buttonPressed);
-
-                sprintf(temp, "Button %d is pressed\n\r", buttonPressed);
-                sendMessage(temp);
-            }
-            else
-            {
-                lcd_clear();
-                lcd_printf("No button pressed.");
-
-                sprintf(temp, "No button pressed.\n\r");
-                sendMessage(temp);
-            }
-            lastButtonPressed = buttonPressed;
-        }
+        currentChar = uart_receive();
+        uart_sendChar(currentChar);
+        lcd_printf(currentChar);
     }
 }
+
+
+/*
+while (1)
+   {
+       buttonPressed = button_getButton();
+       if (lastButtonPressed != buttonPressed)
+       {
+           if (buttonPressed > 0)
+           {
+               lcd_clear();
+               lcd_printf("Button %d pressed", buttonPressed);
+
+               sprintf(temp, "Button %d is pressed\n\r", buttonPressed);
+               uart_sendStr(temp);
+           }
+           else
+           {
+               lcd_clear();
+               lcd_printf("No button pressed.");
+
+               sprintf(temp, "No button pressed.\n\r");
+               uart_sendStr(temp);
+           }
+           lastButtonPressed = buttonPressed;
+       }
+   }
+}
+*/
