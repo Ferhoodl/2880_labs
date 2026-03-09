@@ -26,16 +26,19 @@ int main(void) {
 	timer_init(); // Must be called before lcd_init(), which uses timer functions
 	lcd_init();
 	uart_init();
-  // cyBOT_init_Scan();
+	cyBOT_init_Scan(0b0111);
+	oi_t *sensor_data = oi_alloc();
+	oi_init(sensor_data);
+	oi_setWheels(0,0);
 
 	// YOUR CODE HERE
 
-	while(1)
-	{
-
-      // YOUR CODE HERE
+	char currentChar;
+	while(1){
+	    // YOUR CODE HERE
+	    char readings[91];
+	    float distances[91];
 
 
 	}
-
 }

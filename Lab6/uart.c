@@ -87,4 +87,12 @@ void uart_sendStr(const char *data) {
     }
 }
 
+char uart_receive_nonblocking(void){
+    if((UART1_FR_R & 0x10) != 0){
+
+    }else{
+        return (char) (UART1_DR_R & 0xFF);
+    }
+}
+
 
