@@ -14,8 +14,6 @@
 #include "cyBot_uart.h"
 #include "mission1.h"
 #include "timer.h"
-extern volatile char currentChar;
-
 
 typedef struct {
     int objectNum;
@@ -167,9 +165,10 @@ void scanField(char readings[], float distances[]){
     // end of maintenance polls
 
     for(currentAngle = 0; currentAngle < 180; currentAngle += 2){
-        if(currentChar == 's'){
+        if(uart_receive_nonblocking() == 's'){
             return;
         }
+        uart_receive_nonblocking();
         cyBOT_Scan(currentAngle, &scanStruct);
         currentDist = scanStruct.sound_dist;
         distances[currentAngle/2] = currentDist;

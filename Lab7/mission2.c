@@ -12,17 +12,8 @@
 #include "movement.h"
 #include "cyBot_Scan.h"
 #include "cyBot_uart.h"
-#include "mission1.h"
+#include "mission2.h"
 #include "timer.h"
-extern volatile char currentChar;
-
-
-typedef struct {
-    int objectNum;
-    int angle;
-    double distance;
-    int angularWidth;
-} ScanData;
 
 struct movementTunes{
     double turnAngleMultiplier;       // 1 is nothing. <1 is less angle, >1 is more angle.
@@ -30,9 +21,7 @@ struct movementTunes{
     double driveDriftMultiplier;      // 0 is nothing. <0 is correct to the left; >0 is correct to the right
 };
 
-
-
-/* void main(){
+ void main(){
     oi_t *sensor_data = oi_alloc();
     oi_init(sensor_data);
     lcd_init();
@@ -51,21 +40,15 @@ struct movementTunes{
     tunes14.driveDriftMultiplier = 0.0;
 
 
-    char readings[91];
-    float distances[91];
+    rawScannerDatas rawDatas;
 
-    char msg = cyBot_getByte();
-    while(msg != 's'){
-        msg = cyBot_getByte();
-    }
+    scanField(*rawDatas);
 
-    scanField(readings, distances);
+    analyzeReadingsAndTurn(rawDatas, sensor_data, &tunes14);
 
-    analyzeReadingsAndTurn(readings, distances, sensor_data, &tunes14);
+}
 
-} */
-
-void analyzeReadingsAndTurn(char readings[], float distances[], oi_t *sensor_data, movementTunes *t){
+void analyzeReadingsAndTurn(rawScannerDatas rawDatas, oi_t *sensor_data, movementTunes *t){
     ScanData scans[10];
     int currentObject = 0;
     int inObject = 0;
@@ -74,24 +57,24 @@ void analyzeReadingsAndTurn(char readings[], float distances[], oi_t *sensor_dat
 
     int i = 0;
     for (i = 0; i < 90; i++) {
-        if (!inObject && readings[i] == '#') {
+        if (!inObject && rawDatas.binaryIR[i] == '#') {
             // Start of a new object
             inObject = 1;
             startIndex = i;
             widthSamples = 1;
 
-        } else if (inObject && readings[i] == '#') {
+        } else if (inObject && rawDatas.binaryIR[i] == '#') {
             // Continuing object
             widthSamples++;
 
-        } else if (inObject && readings[i] == ' ') {
+        } else if (inObject && rawDatas.binaryIR[i] == ' ') {
             // End of object
             int centerIndex = startIndex + widthSamples / 2;
 
             scans[currentObject].objectNum = currentObject;
             scans[currentObject].angularWidth = widthSamples * 2;
             scans[currentObject].angle = centerIndex * 2;
-            scans[currentObject].distance = distances[centerIndex];
+            scans[currentObject].distance = rawDatas.rawPing[centerIndex];
 
             inObject = 0;
 
@@ -153,12 +136,14 @@ void sendMessage(char *c) {
 }
 
 
-void scanField(char readings[], float distances[]){
+void scanField(rawScannerDatas *rawDatas){
 
     cyBOT_Scan_t scanStruct;
 
     int currentAngle;
-    double currentDist;
+    double pingDist;
+    double irDist;
+
 
     //these give the servo time to get over to angle 0 so we don't get bad data.
     cyBOT_Scan(0, &scanStruct);
@@ -167,20 +152,28 @@ void scanField(char readings[], float distances[]){
     // end of maintenance polls
 
     for(currentAngle = 0; currentAngle < 180; currentAngle += 2){
-        if(currentChar == 's'){
-            return;
-        }
-        cyBOT_Scan(currentAngle, &scanStruct);
-        currentDist = scanStruct.sound_dist;
-        distances[currentAngle/2] = currentDist;
-        if(distances[currentAngle/2] > 100){
-            readings[currentAngle/2] = ' ';
+        cyBOT_Scan(currentAngle, &scanStruct); // do the scan
 
+        pingDist = scanStruct.sound_dist; // set current ping distance
+        irDist = scanStruct.IR_raw_value; // set current ir distance
+
+        rawDatas.rawPing[currentAngle/2] = pingDist; // assign appropriate location in ping array
+        rawDatas.rawIR[currentAngle/2] = irDist;    // assign appropriate location in ir array
+
+        if(rawDatas.rawPing[currentAngle/2] > 100){ // assign appropriate symbol in binary ping array
+            rawDatas.binaryPing[currentAngle/2] = ' ';
         }else{
-            readings[currentAngle/2] = '#';
+            rawDatas.binaryPing[currentAngle/2] = '#';
         }
+
+        if(rawIR[currentAngle/2] > 100){ // assign appropriate symbol in binary ir array
+            rawDatas.binaryIR[currentAngle/2] = ' ';
+        }else{
+            rawDatas.binaryIR[currentAngle/2] = '#';
+        }
+
         char temp[100];
-        sprintf(temp, "Angle: %d, Distance: %f\n\r", currentAngle, currentDist);
+        sprintf(temp, "Angle: %d, ping distance: %f, ir distance: %f\n\r", currentAngle, pingDist, irDist);
         sendMessage(temp);
     }
 }

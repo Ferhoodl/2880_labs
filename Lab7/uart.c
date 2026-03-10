@@ -11,8 +11,6 @@
 #include <inc/tm4c123gh6pm.h>
 #include <stdint.h>
 #include "uart.h"
-extern volatile char currentChar;
-
 
 void uart_init(void){
 	//TODO
