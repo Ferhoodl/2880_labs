@@ -9,10 +9,11 @@
 
 #include "Timer.h"
 #include "lcd.h"
-#include "cyBot_Scan.h"  // For scan sensors
 #include "uart.h"
+#include "cyBot_Scan.h"  // For scan sensors
 #include "open_interface.h"
 #include "mission1.h"
+#include "uart-interrupt.h"
 
 volatile char currentChar;
 
@@ -39,7 +40,7 @@ int main(void) {
 	    // YOUR CODE HERE
 	    char readings[91];
 	    float distances[91];
-	    if(uart_receive_nonblocking() == 'g'){
+	    if(currentChar == 'g'){
 	        scanField(readings, distances);
 	    }
 	}

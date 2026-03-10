@@ -14,6 +14,8 @@
 #include <inc/tm4c123gh6pm.h>
 #include <stdint.h>
 #include "uart-interrupt.h"
+extern volatile char currentChar;
+
 
 // These variables are declared as examples for your use in the interrupt handler.
 volatile char command_byte = -1; // byte value for special character used as a command
@@ -124,7 +126,11 @@ void UART1_Handler(void)
         //ignore the error bits in UART1_DR_R
         byte_received = (char)(UART1_DR_R & 0xFF);
         uart_sendChar(byte_received);
+        uart_sendChar('\r');
+        uart_sendChar('\n');
 
+
+        currentChar = byte_received;
         //if byte received is a carriage return
         if (byte_received == '\r')
         {

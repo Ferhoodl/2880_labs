@@ -14,8 +14,8 @@
 *   Diane Rover updated 2/2020, added interrupt code
 */
 
-#ifndef UART_H_
-#define UART_H_
+#ifndef UARTI_H_
+#define UARTI_H_
 
 #include <inc/tm4c123gh6pm.h>
 #include <stdint.h>
