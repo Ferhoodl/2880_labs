@@ -67,29 +67,30 @@ void uart_init(void){
   UART1_CTL_R |= 0b1100000001; // UART1_CTL_R = ??? was the original line, but page 662 of Bai textbook uses what is not commented
 
 }
-
+/*
 void uart_sendChar(char data){
 	while((UART1_FR_R & 0x20) != 0);
     UART1_DR_R = data;
 
 	}
-
+*/
   char uart_receive(void){
     while ((UART1_FR_R & 0x10) != 0);
     return (char) (UART1_DR_R & 0xFF);
 
 }
-
+/*
 void uart_sendStr(const char *data) {
     while (*data != '\0') {
         uart_sendChar(*data);
         data++;
     }
 }
-
+*/
 char uart_receive_nonblocking(void){
-    if((UART1_FR_R & 0x10) != 0){
-
+    int test = (UART_FR_RXFE == 1);
+    if(test == 1){              // UART_FR_RXFE as 1 means "UART Receive FIFO Empty"
+        return '0';
     }else{
         return (char) (UART1_DR_R & 0xFF);
     }

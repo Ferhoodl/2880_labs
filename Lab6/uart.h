@@ -32,4 +32,6 @@ char uart_receive(void);
 // Sends each char in the string one at a time
 void uart_sendStr(const char *data);
 
+char uart_receive_nonblocking(void);
+
 #endif /* UART_H_ */

@@ -11,6 +11,8 @@
 #include "lcd.h"
 #include "cyBot_Scan.h"  // For scan sensors
 #include "uart.h"
+#include "open_interface.h"
+#include "mission1.h"
 
 // Uncomment or add any include directives that are needed
 // #include "open_interface.h"
@@ -18,7 +20,7 @@
 // #include "button.h"
 
 
-#warning "Possible unimplemented functions"
+//#warning "Possible unimplemented functions"
 #define REPLACEME 0
 
 
@@ -27,18 +29,15 @@ int main(void) {
 	lcd_init();
 	uart_init();
 	cyBOT_init_Scan(0b0111);
-	oi_t *sensor_data = oi_alloc();
-	oi_init(sensor_data);
-	oi_setWheels(0,0);
 
 	// YOUR CODE HERE
 
-	char currentChar;
 	while(1){
 	    // YOUR CODE HERE
 	    char readings[91];
 	    float distances[91];
-
-
+	    if(uart_receive_nonblocking() == 'g'){
+	        scanField(readings, distances);
+	    }
 	}
 }
