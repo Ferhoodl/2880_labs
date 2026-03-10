@@ -14,6 +14,8 @@
 #include "open_interface.h"
 #include "mission1.h"
 
+volatile char currentChar;
+
 // Uncomment or add any include directives that are needed
 // #include "open_interface.h"
 // #include "movement.h"
@@ -31,6 +33,7 @@ int main(void) {
 	cyBOT_init_Scan(0b0111);
 
 	// YOUR CODE HERE
+	uart_interrupt_init();
 
 	while(1){
 	    // YOUR CODE HERE

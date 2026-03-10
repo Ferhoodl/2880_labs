@@ -130,6 +130,7 @@ void UART1_Handler(void)
         {
             //send a newline character back to PuTTY
             uart_sendChar('\n');
+            uart_sendChar('\r');
         }
         else
         {
