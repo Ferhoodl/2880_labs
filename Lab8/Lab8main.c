@@ -23,11 +23,20 @@ int main(void){
 
         while(1) {
             uint16_t rawValues = adc_read();
-
+            //uint16_t t = rawValues;
+            //double distance = 7e6 * pow(t, -1.697);
+            double totalDistance;
+            double avgDistance;
+            int i;
+            for(i = 0; i < 16; i++){
+                uint16_t rawValues = adc_read();
+                totalDistance += 7e6 * pow(rawValues, -1.697);
+                avgDistance = totalDistance / 16;
+            }
             lcd_clear();
-            lcd_printf("ADC: %d", rawValues);
+            lcd_printf("ADC: %d  D: %.2f", rawValues, avgDistance);
 
-                timer_waitMillis(200);  // slow update so display is readable
+                timer_waitMillis(1000);  // slow update so display is readable
                 }
 }
 
