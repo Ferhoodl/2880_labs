@@ -9,14 +9,9 @@
 #include "open_interface.h"
 #include "lcd.h"
 #include "stdio.h"
-
 #include "movement.h"
 
-struct movementTunes{
-    double turnAngleMultiplier;       // 1 is nothing. <1 is less angle, >1 is more angle.
-    double driveDistanceMultiplier;   // 1 is nothing. <1 is less distance, >1 is more distance.
-    double driveDriftMultiplier;      // 0 is nothing. <0 is correct to the left; >0 is correct to the right
-};
+
 
 void benchAngle(oi_t *sensor_data, movementTunes *t, int rotations){
     turn_right(sensor_data, t, rotations * 360);

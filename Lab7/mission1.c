@@ -22,14 +22,6 @@ typedef struct {
     int angularWidth;
 } ScanData;
 
-struct movementTunes{
-    double turnAngleMultiplier;       // 1 is nothing. <1 is less angle, >1 is more angle.
-    double driveDistanceMultiplier;   // 1 is nothing. <1 is less distance, >1 is more distance.
-    double driveDriftMultiplier;      // 0 is nothing. <0 is correct to the left; >0 is correct to the right
-};
-
-
-
 /* void main(){
     oi_t *sensor_data = oi_alloc();
     oi_init(sensor_data);
