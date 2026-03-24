@@ -19,7 +19,7 @@
 
 // Number of IR samples to average at each angle (Part 1)
 #define IR_SAMPLES 3
-
+/*
 void main(){
     oi_t *sensor_data = oi_alloc();
     oi_init(sensor_data);
@@ -43,7 +43,7 @@ void main(){
     analyzeReadingsAndTurn2(&rawDatas, sensor_data, &tunes14); // Parts 2 & 4
 
 }
-
+*/
 
 void sendMessage2(char *c) {
     while (*c != '\0') {
