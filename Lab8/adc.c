@@ -21,6 +21,7 @@ void adc_init(void){
         GPIO_PORTB_AMSEL_R |=  0x10;
 
         ADC0_ACTSS_R  &= ~0x4;          // disable SS2
+        ADC0_SAC_R = 0x4; // sample size of 16
       // ADC0_RIS_R
       // ADC0_IM_R
       // ADC0_ISC_R
