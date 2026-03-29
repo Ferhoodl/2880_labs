@@ -192,7 +192,7 @@ void analyzeReadingsAndTurn2(rawScannerDatas *rawDatas, oi_t *sensor_data, movem
     double d = scans[smallestObject].distance * 10.0; // convert cm -> mm
     double s = 10; // offset in mm of ir sensor to center of robot.
     double a = angleToTurn;
-    angleToTurn = (180.0/3.14) * atan2(d * sin(a * (3.14/180.0)), d * cos(a * (3.14/180.0)) + s);
+    angleToTurn = (180.0/3.14) * atan2(d * sin(a * (3.14/180.0)), d * cos(a * (3.14/180.0)) - s);
 
     char temp[100];
     sprintf(temp, "Angle to turn: %f", angleToTurn);
