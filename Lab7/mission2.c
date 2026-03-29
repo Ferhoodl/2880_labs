@@ -29,8 +29,8 @@ void main(){
     cyBOT_init_Scan(0b0111);
     oi_setWheels(0, 0);
 
-    right_calibration_value = 353500; //bot10
-    left_calibration_value  = 1377250;
+    right_calibration_value = 269500; //bot04
+    left_calibration_value  = 1204000;
 
     movementTunes tunes14;
     tunes14.driveDistanceMultiplier = 1;
@@ -186,6 +186,18 @@ void analyzeReadingsAndTurn2(rawScannerDatas *rawDatas, oi_t *sensor_data, movem
     sendMessage2(msg);
 
     int angleToTurn = 90 - scans[smallestObject].centerAngle;   // Turn to face the target
+    double driveDistMm = (scans[smallestObject].distance - 10.0) * 10.0;      // Drive to within 10 cm of the object
+    if (driveDistMm < 0) driveDistMm = 0;
+
+    double d = driveDistMm;
+    double s = 10; // offset in mm of ir sensor to center of robot.
+    double a = angleToTurn;
+    angleToTurn = (180.0/3.14) * atan2(d * sin(a * (3.14/180.0)), d * cos(a * (3.14/180.0)) + s);
+
+    char temp[100];
+    sprintf(temp, "Angle to turn: %f", angleToTurn);
+    sendMessage2(temp);
+
 
     if (angleToTurn > 0) {
         turn_right(sensor_data, t, (double)angleToTurn);
@@ -193,9 +205,6 @@ void analyzeReadingsAndTurn2(rawScannerDatas *rawDatas, oi_t *sensor_data, movem
         turn_left(sensor_data, t, (double)(-angleToTurn));
     }
 
-    double driveDistMm = (scans[smallestObject].distance - 10.0) * 10.0;      // Drive to within 10 cm of the object
-
-    if (driveDistMm < 0) driveDistMm = 0;
 
     move_forward_avoid(sensor_data, t, driveDistMm);
 }

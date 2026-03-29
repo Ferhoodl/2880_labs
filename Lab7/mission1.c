@@ -142,7 +142,7 @@ void sendMessage(char *c) {
     }
 }
 
-
+/*
 void scanField(char readings[], float distances[]){
 
     cyBOT_Scan_t scanStruct;
@@ -174,5 +174,6 @@ void scanField(char readings[], float distances[]){
         sprintf(temp, "Angle: %d, Distance: %f\n\r", currentAngle, currentDist);
         sendMessage(temp);
     }
-}
 
+}
+*/
