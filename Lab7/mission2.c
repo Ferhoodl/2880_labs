@@ -189,7 +189,7 @@ void analyzeReadingsAndTurn2(rawScannerDatas *rawDatas, oi_t *sensor_data, movem
     double driveDistMm = (scans[smallestObject].distance - 10.0) * 10.0;      // Drive to within 10 cm of the object
     if (driveDistMm < 0) driveDistMm = 0;
 
-    double d = driveDistMm;
+    double d = scans[smallestObject].distance * 10.0; // convert cm -> mm
     double s = 10; // offset in mm of ir sensor to center of robot.
     double a = angleToTurn;
     angleToTurn = (180.0/3.14) * atan2(d * sin(a * (3.14/180.0)), d * cos(a * (3.14/180.0)) + s);
