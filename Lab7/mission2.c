@@ -15,22 +15,24 @@
 #include "mission2.h"
 #include "timer.h"
 #include "uart-interrupt.h"
+extern volatile char currentChar;
 
 
 // Number of IR samples to average at each angle (Part 1)
 #define IR_SAMPLES 3
 
 void main(){
+
     oi_t *sensor_data = oi_alloc();
+    uart_interrupt_init();   // Part 3: use our own UART, not cyBot_uart_init()
     oi_init(sensor_data);
     timer_init();
     lcd_init();
-    uart_interrupt_init();   // Part 3: use our own UART, not cyBot_uart_init()
     cyBOT_init_Scan(0b0111);
     oi_setWheels(0, 0);
 
-    right_calibration_value = 269500; //bot04
-    left_calibration_value  = 1204000;
+    right_calibration_value = 222250; // bot 01
+    left_calibration_value  = 1198750;
 
     movementTunes tunes14;
     tunes14.driveDistanceMultiplier = 1;
@@ -39,8 +41,15 @@ void main(){
 
     rawScannerDatas rawDatas;
 
+    while(currentChar != 's'){}
+
     scanField2(&rawDatas);                                    // Part 1: scan
     analyzeReadingsAndTurn2(&rawDatas, sensor_data, &tunes14); // Parts 2 & 4
+
+    scanField2(&rawDatas);                                    // Part 1: scan
+    analyzeReadingsAndTurn2(&rawDatas, sensor_data, &tunes14); // Parts 2 & 4
+
+
 
 }
 
@@ -158,6 +167,8 @@ void analyzeReadingsAndTurn2(rawScannerDatas *rawDatas, oi_t *sensor_data, movem
             if (currentObject >= 10) break;
         }
     }
+    //======================= END OF ANALYZE READINGS SECTION ================================
+    // ====================== BEGIN OF TURN SECTION ==========================================
 
     int numObjects = currentObject;
     if (numObjects == 0) {
@@ -186,7 +197,7 @@ void analyzeReadingsAndTurn2(rawScannerDatas *rawDatas, oi_t *sensor_data, movem
     sendMessage2(msg);
 
     int angleToTurn = 90 - scans[smallestObject].centerAngle;   // Turn to face the target
-    double driveDistMm = (scans[smallestObject].distance - 10.0) * 10.0;      // Drive to within 10 cm of the object
+    double driveDistMm = (scans[smallestObject].distance) * 10.0 - 10.0;      // Drive to within 10 cm of the object
     if (driveDistMm < 0) driveDistMm = 0;
 
     double d = scans[smallestObject].distance * 10.0; // convert cm -> mm
@@ -214,6 +225,8 @@ void move_forward_avoid(oi_t *sensor_data, movementTunes *t, double distance_mm)
     double wheelspeed = 50;
     double driveAdjustVal = ((t->driveDriftMultiplier * wheelspeed) / 2);
 
+    double storedSum = 0;
+
     oi_setWheels(wheelspeed + driveAdjustVal, wheelspeed - driveAdjustVal);
 
     while (sum < distance_mm) {
@@ -224,19 +237,25 @@ void move_forward_avoid(oi_t *sensor_data, movementTunes *t, double distance_mm)
 
         // Bump left
         if (sensor_data->bumpLeft) {
+            storedSum = sum;
             oi_setWheels(0, 0);
             sendMessage2("Bump left — escaping right\n\r");
             escapeRight(sensor_data, t);
+            //turn_left(sensor_data, t, 45);
             // Resume driving
             oi_setWheels(wheelspeed + driveAdjustVal, wheelspeed - driveAdjustVal);
+            sum = storedSum;
         }
 
         // Bump right
         if (sensor_data->bumpRight) {
+            storedSum = sum;
             oi_setWheels(0, 0);
             sendMessage2("Bump right — escaping left\n\r");
             escapeLeft(sensor_data, t);
+            //turn_right(sensor_data, t, 45);
             oi_setWheels(wheelspeed + driveAdjustVal, wheelspeed - driveAdjustVal);
+            sum = storedSum;
         }
     }
 

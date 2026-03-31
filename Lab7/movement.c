@@ -18,19 +18,30 @@ void benchAngle(oi_t *sensor_data, movementTunes *t, int rotations){
 }
 
 void escapeLeft(oi_t *sensor_data, movementTunes *t){
-    move_backward(sensor_data, t, 150);
+    move_backward(sensor_data, t, 50);
     turn_left(sensor_data, t, 90);
-    move_forward(sensor_data, t, 250);
+    move_forward(sensor_data, t, 50);
     turn_right(sensor_data, t, 90);
-    move_forward(sensor_data, t, 150);
+    move_forward(sensor_data, t, 50);
 }
 
 void escapeRight(oi_t *sensor_data, movementTunes *t){
-    move_backward(sensor_data, t, 150);
+    move_backward(sensor_data, t, 50);
     turn_right(sensor_data, t, 90);
-    move_forward(sensor_data, t, 250);
+    move_forward(sensor_data, t, 50);
     turn_left(sensor_data, t, 90);
-    move_forward(sensor_data, t, 150);
+    move_forward(sensor_data, t, 50);
+}
+
+void cheeseEscape(oi_t *sensor_data, movementTunes *t){
+    move_backward(sensor_data, t, 500);
+    turn_right(sensor_data, t, 90);
+    move_forward(sensor_data, t, 500);
+    turn_left(sensor_data, t, 90);
+    move_forward(sensor_data, t, 1500);
+    turn_left(sensor_data, t, 90);
+    move_forward(sensor_data, t, 500);
+    turn_left(sensor_data, t, 90);
 }
 
 void move_forward(oi_t *sensor_data, movementTunes *t, double distance_mm){
