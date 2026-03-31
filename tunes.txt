@@ -26,6 +26,9 @@ bot 05:
 bot10:
     right_calibration_value = 353500;
     left_calibration_value  = 1377250;
+
+IR scanner: y = 110011x-1.17
+
 bot1:
     right_calibration_value = 222250;
     left_calibration_value  = 1198750;

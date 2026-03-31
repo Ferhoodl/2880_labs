@@ -15,7 +15,7 @@
 #include "timer.h"
 #include "uart-interrupt.h"
 #include "adc.h"
-
+/*
 int main(void){
 
     lcd_init();
@@ -24,15 +24,16 @@ int main(void){
         while(1) {
             uint16_t rawValues = adc_read();
             uint16_t t = rawValues;
-            //double distance = 7e6 * pow(t, -1.697);
+           // double distance = 7e6 * pow(t, -1.697);
             double distance = 110011 * pow(t, -1.17);
+
 
             lcd_clear();
             lcd_printf("ADC: %d  D: %.2f", rawValues, distance);
 
-            timer_waitMillis(5000);  // slow update so display is readable
+            timer_waitMillis(1000);  // slow update so display is readable
         }
 }
 
-
+*/
 
