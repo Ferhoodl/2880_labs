@@ -26,6 +26,8 @@ void escapeLeft(oi_t *sensor_data, movementTunes *t);
 
 void escapeRight(oi_t *sensor_data, movementTunes *t);
 
+void cheeseEscape(oi_t *sensor_data, movementTunes *t);
+
 void move_backward(oi_t *sensor_data, movementTunes *t, double distance_mm);
 
 #endif /* MOVEMENT_H_ */
