@@ -43,14 +43,24 @@ int main (void) {
   // Write to LCD so that we know the program is running
   lcd_printf("Running");
 
+  right_calibration_value = 222250; // bot 01
+  left_calibration_value  = 1198750;
+
+
+  rawScannerDatas rawDatas;
+
   while(1)
   {
 
     index = 0;  // Set index to the beginning of the command buffe
     while(!currentCharIsFresh){}
 
+    if(currentChar == 's'){
+        scanField2(&rawDatas);
+    }
 
-
+    currentCharIsFresh = 0;
+/*
     // Get the rest of the command until a newline byte (i.e., '\n') received
     while(currentChar != '\n')
     {
@@ -75,6 +85,7 @@ int main (void) {
       cyBot_sendByte('\n');
     }
 
+    */
   }
  
   return 0;

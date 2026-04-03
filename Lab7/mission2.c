@@ -70,10 +70,14 @@ void scanField2(rawScannerDatas *rawDatas){
     int currentAngle;
     int s;
     double irSum;
+    char headerMsg[100];
 
     cyBOT_Scan(0, &scanStruct);
     cyBOT_Scan(0, &scanStruct);
     cyBOT_Scan(0, &scanStruct);
+
+    sprintf(headerMsg, "Angle(Degrees)  Distance(m)\n\r");
+    sendMessage2(headerMsg);
 
     for (currentAngle = 0; currentAngle < 180; currentAngle += 2) {
         int ave = currentAngle / 2;
@@ -93,10 +97,15 @@ void scanField2(rawScannerDatas *rawDatas){
         rawDatas->binaryIR[ave]  = (rawDatas->rawIR[ave] < 900) ? ' ' : '#';
 
         char temp[100];
-        sprintf(temp, "Angle: %d, ping: %.2f cm, IR avg: %.1f\n\r",
-                currentAngle, rawDatas->rawPing[ave], rawDatas->rawIR[ave]);
+        //sprintf(temp, "Angle: %d, ping: %.2f cm, IR avg: %.1f\n\r", currentAngle, rawDatas->rawPing[ave], rawDatas->rawIR[ave]);
+        sprintf(temp, "%d\t\t\t\t%.1f\n\r", currentAngle, rawDatas->rawPing[ave]);
+        sendMessage2(temp);
         sendMessage2(temp);
     }
+    char end[10];
+    sprintf(end, "END\n\r");
+    sendMessage2(end);
+
 }
 
 
