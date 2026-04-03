@@ -14,7 +14,8 @@
 #include <inc/tm4c123gh6pm.h>
 #include <stdint.h>
 #include "uart-interrupt.h"
-extern volatile char currentChar;
+volatile char currentChar;
+volatile char currentCharIsFresh;
 
 
 // These variables are declared as examples for your use in the interrupt handler.
@@ -131,6 +132,7 @@ void UART1_Handler(void)
 
 
         currentChar = byte_received;
+        currentCharIsFresh = 1;
         //if byte received is a carriage return
         if (byte_received == '\r')
         {

@@ -15,12 +15,14 @@
 #include "mission2.h"
 #include "timer.h"
 #include "uart-interrupt.h"
+
 extern volatile char currentChar;
+
 
 
 // Number of IR samples to average at each angle (Part 1)
 #define IR_SAMPLES 3
-
+/*
 void main(){
 
     oi_t *sensor_data = oi_alloc();
@@ -52,7 +54,7 @@ void main(){
 
 
 }
-
+*/
 
 void sendMessage2(char *c) {
     while (*c != '\0') {

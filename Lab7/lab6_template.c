@@ -15,7 +15,8 @@
 #include "mission1.h"
 #include "uart-interrupt.h"
 
-volatile char currentChar;
+extern volatile char currentChar;
+
 
 // Uncomment or add any include directives that are needed
 // #include "open_interface.h"
