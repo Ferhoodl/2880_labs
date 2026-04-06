@@ -15,7 +15,9 @@ volatile uint32_t g_start_time = 0;
 volatile uint32_t g_end_time = 0;
 volatile enum{LOW, HIGH, DONE} g_state = LOW; // State of ping echo pulse
 
-int count = 0;
+unsigned int count = 0;
+bool intflag = true;
+
 
 void ping_init (void){
 
@@ -106,33 +108,22 @@ void TIMER3B_Handler(void){
 }
 
 float ping_getDistance (void){
-
     ping_trigger();
+    while (g_state != DONE) {};
 
-        while (g_state != DONE) {};
+    uint32_t timeDif = 0;
 
-        float timeDif = 0;
+    if (g_start_time >= g_end_time) {
+        timeDif = g_start_time - g_end_time;
+    } else {
+        timeDif = (0x1000000) + g_start_time - g_end_time;
+        count++;
+    }
 
-        int overflow = (g_end_time > g_start_time);
+    float timeMs = (timeDif / 16000000.0) * 1000.0;
+    float distCm = ((timeDif / 16000000.0 / 2.0) * 343.0 * 100.0) - 2.0;
 
-        if (g_start_time > g_end_time) {
-
-            timeDif = g_start_time - g_end_time;
-            lcd_printf("%d %d %d", timeDif, count, g_start_time - g_end_time);
-
-        } else {
-
-            timeDif = ((unsigned long) overflow << 24) + g_start_time - g_end_time;
-            count++;
-            lcd_printf("%d %d %d", timeDif, count, g_start_time - g_end_time);
-
-        }
-
-        timeDif /= 16000000;
-        timeDif = (timeDif/2)*343*100;
-
-        lcd_printf("%.2f %d %d", timeDif, count, g_start_time - g_end_time);
-
-        return timeDif;
+    lcd_printf("Cyc:%lu\nMs:%.2f\nDist:%.2f\nOVF:%u", timeDif, timeMs, distCm, count);
+    return distCm;
 
 }

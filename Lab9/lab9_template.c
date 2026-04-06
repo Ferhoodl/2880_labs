@@ -18,14 +18,12 @@ int main(void) {
 	timer_init(); // Must be called before lcd_init(), which uses timer functions
 	lcd_init();
 	ping_init();
-	ping_trigger();
-
 	// YOUR CODE HERE
 
 	while(1)
 	{
 	    ping_getDistance();
-	    timer_waitMillis(500);
+	    timer_waitMillis(1000);
 
 	}
 
