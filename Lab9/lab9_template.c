@@ -7,6 +7,7 @@
 #include "Timer.h"
 #include "lcd.h"
 #include "ping_template.h"
+#include <inc/tm4c123gh6pm.h>
 
 // Uncomment or add any include directives that are needed
 
@@ -23,9 +24,8 @@ int main(void) {
 
 	while(1)
 	{
-
-      // YOUR CODE HERE
-
+	    ping_getDistance();
+	    timer_waitMillis(500);
 
 	}
 
