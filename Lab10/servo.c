@@ -8,7 +8,7 @@
 #include "Timer.h"
 #include "lcd.h"
 #include "servo.h"
-#include <inc/tm4c123gh6pm.h>
+//#include <inc/tm4c123gh6pm.h>
 
 
 void servo_init(void){
@@ -27,24 +27,25 @@ void servo_init(void){
        TIMER1_TBMR_R = (TIMER1_TBMR_R & ~0xFF) | 0x0A;
        TIMER1_TBPMR_R |= 0xB;
        TIMER1_CTL_R &= ~0x4000;
-       TIMER1_TBPR_R = 0xFF;
        TIMER1_TBILR_R = 0xE200;
-       TIMER1_TBPR_R = 0xE;
-       TIMER1_TBMATCHR_R = // set this to 90 degrees
-       TIMER1_TBPMR_R = // set this to 90 degrees (you need the formulas and set total clock cycles)
-       TIMER1_CTL_R &= ~0x4000;
-
-
-
-
-
+       TIMER1_TBPR_R = 0x4;
+       TIMER1_TBMATCHR_R = 0x8440; // set this to 90 degrees
+       TIMER1_TBPMR_R = 0x4; // set this to 90 degrees (you need the formulas and set total clock cycles)
+       TIMER1_CTL_R |= 0x0100;
 }
 
 void servo_move(uint16_t degrees){
-    uint16_t milis = degrees/180 + 1;
-    uint16_t clockCycles = (milis/1000)/(6.25 * 0.00000001);
+    double highMillis = (double)degrees/180.0 + 1;              // number of milliseconds we want the high to be to achieve the given degrees
+    uint32_t highClockCycles = ((double)highMillis/1000.0)/(6.25 * 0.00000001); // number of clock cycles for above millis
+    uint32_t lowClockCycles =  0x4E200 - highClockCycles;// 20 (0x4E200) ms  - highClockMillis (we set the register with lowClockCycles. That causes the high to be highClockCycles).
 
-    lcd_printf("Degrees: %d\nMilis: %d\nCycles: %d", degrees, milis, clockCycles);
+    uint16_t first16 = 0xFFFF & lowClockCycles;
+    uint16_t last4 = lowClockCycles >> 16;
+
+    TIMER1_TBMATCHR_R = first16; // gets the first 16 bits of the value (we have to split between these two registers)
+    TIMER1_TBPMR_R = last4; // gets the last 4 bits of the value
+
+    lcd_printf("Hdeg: %d\nHms: %f\nHcycs: %d", degrees, highMillis, highClockCycles);
 
     // this code is currently finding for the number of cycles for the high. We need to set the value for the low. Probably just do initial - clockCycles;
 
