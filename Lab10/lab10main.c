@@ -22,6 +22,9 @@ int main(void) {
     uart_interrupt_init();
     button_init();
 
+    servo_low_value = 8088;
+    servo_high_value = 34577;
+
     servo_move(90);
     timer_waitMillis(1000);
 
@@ -34,28 +37,8 @@ int main(void) {
     servo_move(90);
     timer_waitMillis(1000);
 
-    int currentButton = button_getButton();
-    int lastButton = 999;
 
-    int desiredAngle = 180;
-    while(1)
-    {
-        if(currentButton == lastButton){
-            lastButton = currentButton;
-            currentButton = button_getButton();
-            continue;
-        } else if(currentButton == 4){
-            desiredAngle -= 1;
-        } else if(currentButton == 1){
-            desiredAngle += 1;
-        }
-
-        servo_move(desiredAngle-90);
-
-        lastButton = currentButton;
-        currentButton = button_getButton();
-
-    }
+    servo_calibrate();
 
 }
 

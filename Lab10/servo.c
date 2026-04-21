@@ -38,11 +38,22 @@ void servo_init(void){
        TIMER1_CTL_R |= 0x0100;
 }
 
+uint32_t servo_low_value = 0;
+uint32_t servo_high_value = 0;
+
 void servo_move(int32_t degrees){
-    high_low_diff = servo_high_value - servo_low_value;
-    double highMillis = (double)degrees/180.0 + 1;              // number of milliseconds we want the high to be to achieve the given degrees
-    //double adjustedHighMilis = highMilis
-    uint32_t highClockCycles = ((double)highMillis/1000.0)/(6.25 * 0.00000001); // number of clock cycles for above millis
+
+    uint32_t highClockCycles;
+    double highMillis = -1;
+
+
+    if(servo_low_value && servo_high_value){
+        highClockCycles = servo_low_value + ((servo_high_value - servo_low_value) * degrees) / 180.0;
+    }else{
+        highMillis = (double)degrees/180.0 + 1;              // number of milliseconds we want the high to be to achieve the given degrees
+        highClockCycles = ((double)highMillis/1000.0)/(6.25 * 0.00000001); // number of clock cycles for above millis
+    }
+
     uint32_t lowClockCycles =  0x4E200 - highClockCycles;// 20 (0x4E200) ms  - highClockMillis (we set the register with lowClockCycles. That causes the high to be highClockCycles).
 
     uint16_t first16 = 0xFFFF & lowClockCycles;
@@ -53,6 +64,45 @@ void servo_move(int32_t degrees){
 
     lcd_printf("Hdeg: %d\nHms: %f\nHcycs: %d", degrees, highMillis, highClockCycles);
 
-    // this code is currently finding for the number of cycles for the high. We need to set the value for the low. Probably just do initial - clockCycles;
+
+}
+
+void servo_calibrate(){
+    timer_init(); // Must be called before lcd_init(), which uses timer functions
+    lcd_init();
+    servo_init();
+    uart_interrupt_init();
+    button_init();
+
+    servo_move(90);
+
+    int currentButton = button_getButton();
+    int lastButton = 999;
+
+    int desiredAngle = 180;
+    while(1)
+    {
+        if(currentButton == lastButton){
+            lastButton = currentButton;
+            currentButton = button_getButton();
+            continue;
+        } else if(currentButton == 4){
+            desiredAngle -= 5;
+        }else if(currentButton == 3){
+            desiredAngle -= 1;
+        }else if(currentButton == 2){
+            desiredAngle += 1;
+        }
+        else if(currentButton == 1){
+            desiredAngle += 5;
+        }
+
+        servo_move(desiredAngle-90);
+
+        lastButton = currentButton;
+        currentButton = button_getButton();
+
+    }
+
 
 }
