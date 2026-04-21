@@ -9,9 +9,12 @@
 #include "lcd.h"
 #include "stdio.h"
 #include "math.h"
+#include "movement.h"
 #include "cyBot_Scan.h"
-#include "FinalFunctions.h"
-
+#include "mission2.h"
+#include "timer.h"
+#include "uart-interrupt.h"
+#include "adc.h"
 /*
 int main(void){
 

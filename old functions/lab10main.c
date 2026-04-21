@@ -8,11 +8,11 @@
 
 #include "Timer.h"
 #include "lcd.h"
-#include "FinalFunctions.h"
+#include "servo.h"
 //#include <inc/tm4c123gh6pm.h>
 
 // Uncomment or add any include directives that are needed
-/*
+
 int main(void) {
     timer_init(); // Must be called before lcd_init(), which uses timer functions
     lcd_init();
@@ -37,5 +37,5 @@ int main(void) {
     }
 
 }
-*/
+
 

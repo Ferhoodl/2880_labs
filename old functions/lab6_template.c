@@ -9,10 +9,11 @@
 
 #include "Timer.h"
 #include "lcd.h"
+#include "uart.h"
 #include "cyBot_Scan.h"  // For scan sensors
 #include "open_interface.h"
-#include "FinalFunctions.h"
-
+#include "mission1.h"
+#include "uart-interrupt.h"
 
 volatile char currentChar;
 

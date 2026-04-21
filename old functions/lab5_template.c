@@ -12,14 +12,14 @@
  * Authors: Mihir Mistry, Isaiah Steele 02/24/2026
  */
 
-
+#include "button.h"
 #include "timer.h"
 #include "lcd.h"
 #include "cyBot_uart.h"  // Functions for communicating between CyBot and Putty (via UART1)
 // PuTTy: Baud=115200, 8 data bits, No Flow Control, No Parity, COM1
 #include "cyBot_Scan.h"  // Scan using CyBot servo and sensors
-#include "FinalFunctions.h"
-
+#include "mission1.h"
+#include "uart.h"
 /*
 int main(void)
 {

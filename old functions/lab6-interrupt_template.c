@@ -10,8 +10,7 @@
 #include "Timer.h"
 #include "lcd.h"
 #include "cyBot_Scan.h"  // For scan sensors
-#include "FinalFunctions.h"
-
+#include "uart-interrupt.h"
 
 // Uncomment or add any include directives that you want to use
 // #include "open_interface.h"

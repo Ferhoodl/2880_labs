@@ -7,12 +7,12 @@
  * @date 08/14/2016
  */
 
+#include "button.h"
 #include "Timer.h"
 #include "lcd.h"
 #include "cyBot_uart.h"  // Functions for communicating between CyBot and Putty (via UART)
                          // PuTTy: Baud=115200, 8 data bits, No Flow Control, No Parity, COM1
-#include "FinalFunctions.h"
-
+#include "mission1.h"
 
 
 

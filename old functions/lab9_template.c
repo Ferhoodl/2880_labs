@@ -6,7 +6,7 @@
 
 #include "Timer.h"
 #include "lcd.h"
-#include "FinalFunctions.h"
+#include "ping_template.h"
 #include <inc/tm4c123gh6pm.h>
 
 // Uncomment or add any include directives that are needed
