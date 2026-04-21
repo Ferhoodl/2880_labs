@@ -8,7 +8,11 @@
 #include "Timer.h"
 #include "lcd.h"
 #include "servo.h"
+#include "uart-interrupt.h"
+#include "button.h"
+
 //#include <inc/tm4c123gh6pm.h>
+
 
 
 void servo_init(void){
@@ -34,8 +38,10 @@ void servo_init(void){
        TIMER1_CTL_R |= 0x0100;
 }
 
-void servo_move(uint16_t degrees){
+void servo_move(int32_t degrees){
+    high_low_diff = servo_high_value - servo_low_value;
     double highMillis = (double)degrees/180.0 + 1;              // number of milliseconds we want the high to be to achieve the given degrees
+    //double adjustedHighMilis = highMilis
     uint32_t highClockCycles = ((double)highMillis/1000.0)/(6.25 * 0.00000001); // number of clock cycles for above millis
     uint32_t lowClockCycles =  0x4E200 - highClockCycles;// 20 (0x4E200) ms  - highClockMillis (we set the register with lowClockCycles. That causes the high to be highClockCycles).
 
@@ -48,7 +54,5 @@ void servo_move(uint16_t degrees){
     lcd_printf("Hdeg: %d\nHms: %f\nHcycs: %d", degrees, highMillis, highClockCycles);
 
     // this code is currently finding for the number of cycles for the high. We need to set the value for the low. Probably just do initial - clockCycles;
-
-
 
 }
