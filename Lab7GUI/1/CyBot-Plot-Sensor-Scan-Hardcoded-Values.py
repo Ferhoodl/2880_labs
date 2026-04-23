@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 # makes a distance measurement.
 # arange: used to to store into vector angle_degrees numbers from 0 degrees to 180 degrees, counting by 4's.
 # Units: degrees
-angle_degrees = np.arange(0,184,4)
+angle_degrees = np.arange(0,180,2)
 
 # distance: a vector, where each element is the corresponding distance measured at each angle in vector angle_degrees
 # Units: meters
