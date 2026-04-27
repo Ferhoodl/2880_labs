@@ -70,5 +70,7 @@ void uart_sendChar(char data);
 void uart_sendStr(const char *data);
 void UART1_Handler(void);
 
+void manual_control(oi_t *sensor_data, movementTunes *t);
+
 
 #endif /* FINALFUNCTIONS_H_ */

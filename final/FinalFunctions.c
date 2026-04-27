@@ -129,7 +129,7 @@ void escapeRight(oi_t *sensor_data, movementTunes *t){
     move_forward(sensor_data, t, 150);
 }
 
-void move_forward(oi_t *sensor_data, movementTunes *t, double distance_mm){
+/*void move_forward(oi_t *sensor_data, movementTunes *t, double distance_mm){
     double sum = 0;
     double wheelspeed = 50; // mm/sec
     double driveAdjustVal = ((t->driveDriftMultiplier * wheelspeed) / 2);
@@ -141,6 +141,38 @@ void move_forward(oi_t *sensor_data, movementTunes *t, double distance_mm){
             lcd_printf("dist: %f", sum * t->driveDistanceMultiplier + 1);
         }
     oi_setWheels(0,0);
+}*/
+void move_forward(oi_t *sensor_data, movementTunes *t, double distance_mm) {
+    double sum = 0;
+    double wheelspeed = 50;
+    double driveAdjustVal = ((t->driveDriftMultiplier * wheelspeed) / 2);
+    oi_setWheels(wheelspeed + driveAdjustVal, wheelspeed - driveAdjustVal);
+
+    while (sum < distance_mm) {
+        oi_update(sensor_data);
+        sum += sensor_data->distance * t->driveDistanceMultiplier;
+        lcd_printf("dist: %f", sum * t->driveDistanceMultiplier + 1);
+
+        if (sensor_data->bumpLeft) {
+            oi_setWheels(0, 0);
+            uart_sendStr("BUMP: Left sensor triggered!\r\n");
+            lcd_printf("BUMP LEFT");
+            oi_setWheels(-100, -100);
+            timer_waitMillis(1000);
+            oi_setWheels(0, 0);
+            return;
+        } else if (sensor_data->bumpRight) {
+            oi_setWheels(0, 0);
+            uart_sendStr("BUMP: Right sensor triggered!\r\n");
+            lcd_printf("BUMP RIGHT");
+            oi_setWheels(-100, -100);
+            timer_waitMillis(1000);
+            oi_setWheels(0, 0);
+            return;
+        }
+    }
+
+    oi_setWheels(0, 0);
 }
 
 void move_backward(oi_t *sensor_data, movementTunes *t, double distance_mm){
@@ -536,7 +568,7 @@ void uart_sendStr(const char *data){
             data++;
         }}
 
-// Interrupt handler for receive interrupts
+/*// Interrupt handler for receive interrupts
 void UART1_Handler(void)
 {
     char byte_received;
@@ -575,5 +607,110 @@ void UART1_Handler(void)
               command_flag = 1;
             }
         }
+    }
+}*/
+void UART1_Handler(void)
+{
+    if (UART1_MIS_R & 0x10)
+    {
+        UART1_ICR_R |= 0b00010000;
+
+        char byte_received = (char)(UART1_DR_R & 0xFF);
+        currentChar = byte_received;
+
+        if (byte_received == command_byte)
+        {
+            command_flag = 1;
+        }
+    }
+}
+
+
+// -----------------------------------------------------------------------------
+// Manual WASD Control
+// -----------------------------------------------------------------------------
+
+void manual_control(oi_t *sensor_data, movementTunes *t) {
+    char direction = '\0';
+    char numBuf[16];
+    int  numIdx = 0;
+
+    uart_sendStr("=== Manual Control ===\r\n");
+    uart_sendStr("w=forward  s=backward  a=left  d=right\r\n");
+    uart_sendStr("Select direction, then enter distance + Enter.\r\n\r\n");
+
+    while (1) {
+
+        // ---- Wait for a direction key ----
+        uart_sendStr("Direction (wasd): ");
+
+        char ch = '\0';
+        while (ch != 'w' && ch != 'a' && ch != 's' && ch != 'd') {
+            while (currentChar == '\0') {}
+            ch = currentChar;
+            currentChar = '\0';
+        }
+
+        direction = ch;
+
+        const char *label =
+            (direction == 'w') ? "FORWARD"  :
+            (direction == 's') ? "BACKWARD" :
+            (direction == 'a') ? "LEFT"     : "RIGHT";
+
+        const char *unit = (direction == 'w' || direction == 's') ? "mm" : "degrees";
+
+        char echo[32];
+        snprintf(echo, sizeof(echo), "%c  (%s)\r\n", direction, label);
+        uart_sendStr(echo);
+
+        // ---- Read numeric input ----
+        char prompt[48];
+        snprintf(prompt, sizeof(prompt), "Distance (%s, then Enter): ", unit);
+        uart_sendStr(prompt);
+
+        numIdx = 0;
+        while (1) {
+            while (currentChar == '\0') {}
+            ch = currentChar;
+            currentChar = '\0';
+
+            if (ch == '\r' || ch == '\n') {
+                numBuf[numIdx] = '\0';
+                uart_sendStr("\r\n");
+                break;
+            } else if (ch >= '0' && ch <= '9' && numIdx < (int)(sizeof(numBuf) - 1)) {
+                numBuf[numIdx++] = ch;
+                uart_sendChar(ch);
+            } else if ((ch == '\b' || ch == 127) && numIdx > 0) {
+                numIdx--;
+                uart_sendStr("\b \b");
+            }
+        }
+
+        if (numIdx == 0) {
+            uart_sendStr("No value entered -- try again.\r\n\r\n");
+            continue;
+        }
+
+        double value = (double)atoi(numBuf);
+        if (value <= 0) {
+            uart_sendStr("Value must be > 0 -- try again.\r\n\r\n");
+            continue;
+        }
+
+        // ---- Execute the move ----
+        char msg[64];
+        snprintf(msg, sizeof(msg), "Moving %s %.0f %s...\r\n", label, value, unit);
+        uart_sendStr(msg);
+
+        switch (direction) {
+            case 'w': move_forward (sensor_data, t, value); break;
+            case 's': move_backward(sensor_data, t, value); break;
+            case 'a': turn_left    (sensor_data, t, value); break;
+            case 'd': turn_right   (sensor_data, t, value); break;
+        }
+
+        uart_sendStr("Done.\r\n\r\n");
     }
 }

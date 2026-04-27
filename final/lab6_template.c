@@ -14,16 +14,13 @@
 #include "FinalFunctions.h"
 
 
-volatile char currentChar;
+//volatile char currentChar;
 
 // Uncomment or add any include directives that are needed
 // #include "open_interface.h"
 // #include "movement.h"
 // #include "button.h"
 
-
-//#warning "Possible unimplemented functions"
-#define REPLACEME 0
 
 /*
 int main(void) {
