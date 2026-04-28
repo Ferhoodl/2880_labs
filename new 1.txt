@@ -1,0 +1,6 @@
+# scan: UI sends "s"
+	robot replies with "STARTSCAN\n"
+	robot replies with data like this: 
+
+
+drive: 'd

@@ -625,7 +625,7 @@ void UART1_Handler(void)
     }
 }
 
-
+/*
 // -----------------------------------------------------------------------------
 // Manual WASD Control
 // -----------------------------------------------------------------------------
@@ -712,5 +712,92 @@ void manual_control(oi_t *sensor_data, movementTunes *t) {
         }
 
         uart_sendStr("Done.\r\n\r\n");
+    }
+}
+*/
+
+// -----------------------------------------------------------------------------
+// Manual Control - GUI Command Mode
+// -----------------------------------------------------------------------------
+
+void manual_control(oi_t *sensor_data, movementTunes *t) {
+    char cmdBuf[32];
+    int  cmdIdx = 0;
+
+    uart_sendStr("=== Manual Control ===\r\n");
+    uart_sendStr("Commands: D:xx (mm, negative=backward) | T:xx (degrees, positive=left, negative=right)\r\n\r\n");
+
+    while (1) {
+        uart_sendStr("Enter command: ");
+        cmdIdx = 0;
+
+        // ---- Read full command string until Enter ----
+        while (1) {
+            while (currentChar == '\0') {}
+            char ch = currentChar;
+            currentChar = '\0';
+
+            if (ch == '\r' || ch == '\n') {
+                cmdBuf[cmdIdx] = '\0';
+                uart_sendStr("\r\n");
+                break;
+            } else if (cmdIdx < (int)(sizeof(cmdBuf) - 1)) {
+                cmdBuf[cmdIdx++] = ch;
+                uart_sendChar(ch);
+            }
+        }
+
+        if (cmdIdx == 0) {
+            uart_sendStr("No command entered -- try again.\r\n\r\n");
+            continue;
+        }
+
+        // ---- Parse D:xx ----
+        if ((cmdBuf[0] == 'D' || cmdBuf[0] == 'd') && cmdBuf[1] == ':') {
+
+            int value = atoi(&cmdBuf[2]);
+            if (value == 0) {
+                uart_sendStr("Invalid value -- try again.\r\n\r\n");
+                continue;
+            }
+            char msg[48];
+            if (value > 0) {
+                snprintf(msg, sizeof(msg), "Driving forward %d mm...\r\n", value);
+                uart_sendStr(msg);
+                lcd_printf("FWD: %dmm", value);
+                move_forward(sensor_data, t, (double)value);
+            } else {
+                snprintf(msg, sizeof(msg), "Driving backward %d mm...\r\n", -value);
+                uart_sendStr(msg);
+                lcd_printf("BCK: %dmm", -value);
+                move_backward(sensor_data, t, (double)(-value));
+            }
+            uart_sendStr("Done.\r\n\r\n");
+
+        // ---- Parse T:xx ----
+        } else if ((cmdBuf[0] == 'T' || cmdBuf[0] == 't') && cmdBuf[1] == ':') {
+
+            int value = atoi(&cmdBuf[2]);
+            if (value == 0) {
+                uart_sendStr("Invalid value -- try again.\r\n\r\n");
+                continue;
+            }
+            char msg[48];
+            if (value > 0) {
+                snprintf(msg, sizeof(msg), "Turning left %d degrees...\r\n", value);
+                uart_sendStr(msg);
+                lcd_printf("LEFT: %ddeg", value);
+                turn_left(sensor_data, t, (double)value);
+            } else {
+                snprintf(msg, sizeof(msg), "Turning right %d degrees...\r\n", -value);
+                uart_sendStr(msg);
+                lcd_printf("RIGHT: %ddeg", -value);
+                turn_right(sensor_data, t, (double)(-value));
+            }
+            uart_sendStr("Done.\r\n\r\n");
+
+        } else {
+            uart_sendStr("Unknown command. Use D:xx or T:xx\r\n\r\n");
+        }
     }
 }
