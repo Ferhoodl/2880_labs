@@ -151,23 +151,15 @@ void move_forward(oi_t *sensor_data, movementTunes *t, double distance_mm) {
     while (sum < distance_mm) {
         oi_update(sensor_data);
         sum += sensor_data->distance * t->driveDistanceMultiplier;
-        lcd_printf("dist: %f", sum * t->driveDistanceMultiplier + 1);
+        lcd_printf("dist: %.1f cm", sum / 10.0);
 
-        if (sensor_data->bumpLeft) {
+        if (sensor_data->bumpLeft || sensor_data->bumpRight) {
             oi_setWheels(0, 0);
-            uart_sendStr("BUMP: Left sensor triggered!\r\n");
-            lcd_printf("BUMP LEFT");
-            oi_setWheels(-100, -100);
-            timer_waitMillis(1000);
-            oi_setWheels(0, 0);
-            return;
-        } else if (sensor_data->bumpRight) {
-            oi_setWheels(0, 0);
-            uart_sendStr("BUMP: Right sensor triggered!\r\n");
-            lcd_printf("BUMP RIGHT");
-            oi_setWheels(-100, -100);
-            timer_waitMillis(1000);
-            oi_setWheels(0, 0);
+            double remaining_cm = (distance_mm - sum) / 10.0;
+            char msg[64];
+            snprintf(msg, sizeof(msg), "BUMP! %.1f cm\r\n", remaining_cm);
+            uart_sendStr(msg);
+            lcd_printf("BUMP! %.1fcm left", remaining_cm);
             return;
         }
     }
@@ -725,10 +717,9 @@ void manual_control(oi_t *sensor_data, movementTunes *t) {
     int  cmdIdx = 0;
 
     uart_sendStr("=== Manual Control ===\r\n");
-    uart_sendStr("Commands: D:xx (mm, negative=backward) | T:xx (degrees, positive=left, negative=right)\r\n\r\n");
+    uart_sendStr("Waiting for commands: D:xx (cm) | T:xx (degrees)\r\n\r\n");
 
     while (1) {
-        uart_sendStr("Enter command: ");
         cmdIdx = 0;
 
         // ---- Read full command string until Enter ----
@@ -739,47 +730,47 @@ void manual_control(oi_t *sensor_data, movementTunes *t) {
 
             if (ch == '\r' || ch == '\n') {
                 cmdBuf[cmdIdx] = '\0';
-                uart_sendStr("\r\n");
                 break;
             } else if (cmdIdx < (int)(sizeof(cmdBuf) - 1)) {
                 cmdBuf[cmdIdx++] = ch;
-                uart_sendChar(ch);
             }
         }
 
-        if (cmdIdx == 0) {
-            uart_sendStr("No command entered -- try again.\r\n\r\n");
-            continue;
-        }
+        if (cmdIdx == 0) continue;
 
-        // ---- Parse D:xx ----
+        // ---- Parse D:xx (cm) ----
         if ((cmdBuf[0] == 'D' || cmdBuf[0] == 'd') && cmdBuf[1] == ':') {
 
-            int value = atoi(&cmdBuf[2]);
-            if (value == 0) {
-                uart_sendStr("Invalid value -- try again.\r\n\r\n");
+            int value_cm = atoi(&cmdBuf[2]);
+            if (value_cm == 0) {
+                uart_sendStr("Invalid value.\r\n");
                 continue;
             }
+            double value_mm = (double)(value_cm < 0 ? -value_cm : value_cm) * 10.0;
             char msg[48];
-            if (value > 0) {
-                snprintf(msg, sizeof(msg), "Driving forward %d mm...\r\n", value);
+            if (value_cm > 0) {
+                snprintf(msg, sizeof(msg), "Driving forward %d cm...\r\n", value_cm);
                 uart_sendStr(msg);
-                lcd_printf("FWD: %dmm", value);
-                move_forward(sensor_data, t, (double)value);
+                lcd_printf("FWD: %dcm", value_cm);
+                move_forward(sensor_data, t, value_mm);
             } else {
-                snprintf(msg, sizeof(msg), "Driving backward %d mm...\r\n", -value);
+                snprintf(msg, sizeof(msg), "Driving backward %d cm...\r\n", -value_cm);
                 uart_sendStr(msg);
-                lcd_printf("BCK: %dmm", -value);
-                move_backward(sensor_data, t, (double)(-value));
+                lcd_printf("BCK: %dcm", -value_cm);
+                move_backward(sensor_data, t, value_mm);
             }
-            uart_sendStr("Done.\r\n\r\n");
+            uart_sendStr("Done.\r\n");
 
-        // ---- Parse T:xx ----
+        // ---- Parse T:xx (degrees, positive=left, negative=right) ----
         } else if ((cmdBuf[0] == 'T' || cmdBuf[0] == 't') && cmdBuf[1] == ':') {
 
             int value = atoi(&cmdBuf[2]);
             if (value == 0) {
-                uart_sendStr("Invalid value -- try again.\r\n\r\n");
+                uart_sendStr("Invalid value.\r\n");
+                continue;
+            }
+            if (value < -90 || value > 90) {
+                uart_sendStr("Turn must be between -90 and 90 degrees.\r\n");
                 continue;
             }
             char msg[48];
@@ -794,10 +785,10 @@ void manual_control(oi_t *sensor_data, movementTunes *t) {
                 lcd_printf("RIGHT: %ddeg", -value);
                 turn_right(sensor_data, t, (double)(-value));
             }
-            uart_sendStr("Done.\r\n\r\n");
+            uart_sendStr("Done.\r\n");
 
         } else {
-            uart_sendStr("Unknown command. Use D:xx or T:xx\r\n\r\n");
+            uart_sendStr("Unknown command. Use D:xx or T:xx\r\n");
         }
     }
 }
