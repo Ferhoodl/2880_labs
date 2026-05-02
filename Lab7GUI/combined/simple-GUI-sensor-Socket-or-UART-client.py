@@ -110,7 +110,7 @@ def send_turn():
     global gui_send_message, robot_theta
     try:
         val = float(turn_entry.get())
-        msg = f"TURN:{val:+.0f}\n"
+        msg = f"T:{val:+.0f}\n"
         gui_send_message = msg
 
         robot_theta += val
@@ -208,32 +208,6 @@ def socket_thread():
                 if line == "ENDSCAN":
                     break
 
-                # === HANDLE BUMP / EDGE ===
-                if line.startswith("BUMP:") or line.startswith("EDGE:"):
-                    try:
-                        msg_type, val = line.split(":")
-                        dist = float(val)
-
-                        # Mark position IN FRONT before moving
-                        rad = np.deg2rad(robot_theta)
-                        front_x = robot_x + dist * np.cos(rad)
-                        front_y = robot_y + dist * np.sin(rad)
-
-                        if msg_type == "BUMP":
-                            obstacles.append((front_x, front_y))
-                        elif msg_type == "EDGE":
-                            edges.append((front_x, front_y))
-
-                        # Move backward
-                        move_backward(dist)
-
-                        window.after(0, update_map)
-
-                    except:
-                        print("Bad special message:", line)
-
-                    continue
-
                 # === NORMAL SCAN DATA ===
                 parts = line.split(":")
 
@@ -265,6 +239,52 @@ def socket_thread():
 
                 except:
                     print("Bad data:", line)
+        if ("D:" in send_message):
+            while(True):
+                line = cybot.readline().decode().strip()
+                
+                if line == "BEGINDRIVE":
+                    continue
+                if line == "ENDDRIVE":
+                    break
+
+                            # === HANDLE BUMP / EDGE ===
+                if line.startswith("BUMP:") or line.startswith("EDGE:"):
+                    try:
+                        msg_type, val = line.split(":")
+                        dist = float(val)
+
+                        # Mark position IN FRONT before moving
+                        rad = np.deg2rad(robot_theta)
+                        front_x = robot_x + dist * np.cos(rad)
+                        front_y = robot_y + dist * np.sin(rad)
+
+                        if msg_type == "BUMP":
+                            # Move backward
+                            move_backward(dist)
+
+                            #reassign front x and y
+                            front_x = robot_x + dist * np.cos(rad)
+                            front_y = robot_y + dist * np.sin(rad)
+
+                            obstacles.append((front_x, front_y))
+                        elif msg_type == "EDGE":
+                            # Move backward
+                            move_backward(dist)
+
+                            #reassign front x and y
+                            front_x = robot_x + dist * np.cos(rad)
+                            front_y = robot_y + dist * np.sin(rad)
+
+                            edges.append((front_x, front_y))
+
+
+                        window.after(0, update_map)
+
+                    except:
+                        print("Bad special message:", line)
+
+                    continue
 
         while gui_send_message == "wait\n":
             time.sleep(0.1)

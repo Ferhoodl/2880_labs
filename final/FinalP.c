@@ -27,9 +27,9 @@ void main(void) {
     oi_init(movement);
 
     movementTunes tunes = {
-        .driveDriftMultiplier    = 0,
-        .driveDistanceMultiplier = .98,
-        .turnAngleMultiplier     = .95
+        .driveDriftMultiplier    = 0,     // 0 is nothing. <0 is correct to the left; >0 is correct to the right
+        .driveDistanceMultiplier = 1.05,   // 1 is nothing. <1 is less distance, >1 is more distance.
+        .turnAngleMultiplier     = .95    // 1 is nothing. <1 is less angle, >1 is more angle.
     };
 
     manual_control(movement, &tunes);

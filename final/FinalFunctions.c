@@ -181,7 +181,7 @@ void move_forward(oi_t *sensor_data, movementTunes *t, double distance_mm) {
             oi_setWheels(0, 0);
             double remaining_cm = (distance_mm - sum) / 10.0;
             char msg[64];
-            snprintf(msg, sizeof(msg), "BUMP! %.1f cm\r\n", remaining_cm);
+            snprintf(msg, sizeof(msg), "BUMP:%.1f\r\n", remaining_cm);
             uart_sendStr(msg);
             lcd_printf("BUMP! %.1fcm left", remaining_cm);
             return;
@@ -784,6 +784,7 @@ void scanField2(rawScannerDatas *rawDatas){
     char end[10];
     sprintf(end, "ENDSCAN\n\r");
     sendMessage2(end);
+    lcd_clear();
 
 }
 
@@ -833,10 +834,13 @@ void manual_control(oi_t *sensor_data, movementTunes *t) {
             double value_mm = (double)(value_cm < 0 ? -value_cm : value_cm) * 10.0;
             char msg[48];
             if (value_cm > 0) {
-                snprintf(msg, sizeof(msg), "Driving forward %d cm...\r\n", value_cm);
+                snprintf(msg, sizeof(msg), "BEGINDRIVE\r\n");
                 uart_sendStr(msg);
                 lcd_printf("FWD: %dcm", value_cm);
                 move_forward(sensor_data, t, value_mm);
+                snprintf(msg, sizeof(msg), "ENDDRIVE\r\n");
+                uart_sendStr(msg);
+
             } else {
                 snprintf(msg, sizeof(msg), "Driving backward %d cm...\r\n", -value_cm);
                 uart_sendStr(msg);
