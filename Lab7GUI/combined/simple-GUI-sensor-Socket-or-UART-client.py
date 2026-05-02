@@ -123,7 +123,7 @@ def send_drive():
     global gui_send_message, robot_x, robot_y, robot_theta
     try:
         val = float(drive_entry.get())
-        msg = f"DRIVE:{val:.0f}\n"
+        msg = f"D:{val:.0f}\n"
         gui_send_message = msg
 
         rad = np.deg2rad(robot_theta)
@@ -248,6 +248,14 @@ def socket_thread():
 
                     if angle < 0 or angle > 178 or angle % 2 != 0:
                         continue
+                    
+                    if(ping > 150):
+                        ping = 150
+                    
+                    if(ir > 150):
+                        ir = 150
+                    
+
 
                     angles.append(np.deg2rad(angle))
                     ping_distances.append(ping)

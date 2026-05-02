@@ -72,5 +72,14 @@ void UART1_Handler(void);
 
 void manual_control(oi_t *sensor_data, movementTunes *t);
 
+typedef struct {
+    double rawPing[90];
+    double rawIR[90];
+    char   binaryPing[90];
+    char   binaryIR[90];
+} rawScannerDatas;
+
+void scanField2(rawScannerDatas *rawDatas);
+
 
 #endif /* FINALFUNCTIONS_H_ */

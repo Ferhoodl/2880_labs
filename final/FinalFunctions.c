@@ -10,6 +10,15 @@
 #include "lcd.h"
 #include "stdio.h"
 
+#define IR_SAMPLES 3
+
+// Scan value
+typedef struct{
+    float sound_dist;  // Distance from PING sensor (cyBOT_Scan returns -1.0 if PING is not enabled)
+    int IR_raw_val;    // Raw ADC value from IR sensor (cyBOT_Scan returns -1 if IR is not enabled)
+} cyBOT_Scan_t;
+
+
 
 // ----------------------------------------------------------------
 // ADC
@@ -45,6 +54,21 @@ uint32_t adc_read(void) {
        uint16_t result = ADC0_SSFIFO2_R & 0xFFF;  // read result
        ADC0_ISC_R   |= 0x4;                        // clear
        return result;
+}
+
+
+
+
+void cybot_scan_custom(int angle, cyBOT_Scan_t* getScan){
+    servo_move(angle);
+
+    timer_waitMillis(100);
+
+    uint16_t rawValues = adc_read();
+    float pingDist = ping_getDistance();
+
+    getScan->IR_raw_val = rawValues;
+    getScan->sound_dist = pingDist;
 }
 
 
@@ -708,6 +732,61 @@ void manual_control(oi_t *sensor_data, movementTunes *t) {
 }
 */
 
+void sendMessage2(char *c) {
+    while (*c != '\0') {
+        uart_sendChar(*c);
+        c++;
+    }
+}
+
+void scanField2(rawScannerDatas *rawDatas){
+
+    adc_init();
+    servo_init();
+
+    cyBOT_Scan_t scanStruct;
+    int currentAngle;
+    int s;
+    double irSum;
+    char headerMsg[100];
+
+
+    cybot_scan_custom(0, &scanStruct);
+
+    timer_waitMillis(1000);
+
+    sprintf(headerMsg, "BEGINSCAN\n\r");
+    sendMessage2(headerMsg);
+
+    for (currentAngle = 0; currentAngle < 180; currentAngle += 2) {
+        int ave = currentAngle / 2;
+
+        irSum = 0;                                  // Average multiple IR readings at this angle
+        for (s = 0; s < IR_SAMPLES; s++) {
+            cybot_scan_custom(currentAngle, &scanStruct);
+            irSum += scanStruct.IR_raw_val;
+        }
+        rawDatas->rawIR[ave] = irSum / IR_SAMPLES;
+
+        cybot_scan_custom(currentAngle, &scanStruct);         // PING distance
+        rawDatas->rawPing[ave] = scanStruct.sound_dist;
+
+        rawDatas->binaryPing[ave] = (rawDatas->rawPing[ave] > 100) ? ' ' : '#';
+
+        rawDatas->binaryIR[ave]  = (rawDatas->rawIR[ave] < 900) ? ' ' : '#';
+
+        char temp[100];
+        //sprintf(temp, "Angle: %d, ping: %.2f cm, IR avg: %.1f\n\r", currentAngle, rawDatas->rawPing[ave], rawDatas->rawIR[ave]);
+        sprintf(temp, "%d:%.1f:%.1f\n\r", currentAngle, rawDatas->rawPing[ave], 110011 * pow(rawDatas->rawIR[ave], -1.17));
+        sendMessage2(temp);
+        //sendMessage2(temp);
+    }
+    char end[10];
+    sprintf(end, "ENDSCAN\n\r");
+    sendMessage2(end);
+
+}
+
 // -----------------------------------------------------------------------------
 // Manual Control - GUI Command Mode
 // -----------------------------------------------------------------------------
@@ -715,6 +794,8 @@ void manual_control(oi_t *sensor_data, movementTunes *t) {
 void manual_control(oi_t *sensor_data, movementTunes *t) {
     char cmdBuf[32];
     int  cmdIdx = 0;
+
+    lcd_puts("testing1");
 
     uart_sendStr("=== Manual Control ===\r\n");
     uart_sendStr("Waiting for commands: D:xx (cm) | T:xx (degrees)\r\n\r\n");
@@ -736,7 +817,10 @@ void manual_control(oi_t *sensor_data, movementTunes *t) {
             }
         }
 
+        lcd_puts("testing2");
+
         if (cmdIdx == 0) continue;
+        sendMessage2(cmdBuf);
 
         // ---- Parse D:xx (cm) ----
         if ((cmdBuf[0] == 'D' || cmdBuf[0] == 'd') && cmdBuf[1] == ':') {
@@ -787,7 +871,16 @@ void manual_control(oi_t *sensor_data, movementTunes *t) {
             }
             uart_sendStr("Done.\r\n");
 
-        } else {
+        } else if (cmdBuf[0] == 's'){
+            // scan
+            rawScannerDatas rawDatas;
+            scanField2(&rawDatas);
+
+
+        } else if(cmdBuf[0] == 'a'){
+            //make sound
+        }
+            else {
             uart_sendStr("Unknown command. Use D:xx or T:xx\r\n");
         }
     }
