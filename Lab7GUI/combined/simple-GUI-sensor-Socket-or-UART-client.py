@@ -12,7 +12,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 # Globals
 gui_send_message = "wait\n"
 angles = []
-distances = []
+ping_distances = []
+ir_distances = []
 
 # Robot state
 robot_x = 0
@@ -21,6 +22,7 @@ robot_theta = 90  # facing "up" initially (degrees)
 
 obstacles = []
 debris = []
+edges = []
 
 # Field size (cm)
 FIELD_X = 426
@@ -36,7 +38,7 @@ def main():
     window = tk.Tk()
     window.title("CyBot Scanner")
 
-    # === LEFT FRAME (existing UI) ===
+    # === LEFT FRAME ===
     left_frame = tk.Frame(window)
     left_frame.pack(side="left")
 
@@ -44,6 +46,7 @@ def main():
     Last_command_Label.pack()
 
     tk.Button(left_frame, text="Scan", command=send_scan).pack()
+    tk.Button(left_frame, text="Alert", command=send_alert).pack()
     tk.Button(left_frame, text="Quit", command=send_quit).pack()
 
     # Polar plot
@@ -55,7 +58,7 @@ def main():
     canvas = FigureCanvasTkAgg(fig, master=left_frame)
     canvas.get_tk_widget().pack()
 
-    # === RIGHT FRAME (NEW MAP UI) ===
+    # === RIGHT FRAME ===
     right_frame = tk.Frame(window)
     right_frame.pack(side="right")
 
@@ -79,6 +82,7 @@ def main():
 
     tk.Button(right_frame, text="Mark Obstacle", command=mark_obstacle).pack()
     tk.Button(right_frame, text="Mark Debris", command=mark_debris).pack()
+    tk.Button(right_frame, text="Mark Edge", command=mark_edge).pack()
 
     update_map()
 
@@ -91,6 +95,10 @@ def main():
 def send_scan():
     global gui_send_message
     gui_send_message = "s\n"
+
+def send_alert():
+    global gui_send_message
+    gui_send_message = "a\n"
 
 def send_quit():
     global gui_send_message, window
@@ -118,7 +126,6 @@ def send_drive():
         msg = f"DRIVE:{val:.0f}\n"
         gui_send_message = msg
 
-        # Update position
         rad = np.deg2rad(robot_theta)
         robot_x += val * np.cos(rad)
         robot_y += val * np.sin(rad)
@@ -132,8 +139,8 @@ def mark_obstacle():
     global obstacles, robot_x, robot_y, robot_theta
 
     rad = np.deg2rad(robot_theta)
-    ox = robot_x + 5 * np.cos(rad)
-    oy = robot_y + 5 * np.sin(rad)
+    ox = robot_x + 25 * np.cos(rad)
+    oy = robot_y + 25 * np.sin(rad)
 
     obstacles.append((ox, oy))
     update_map()
@@ -142,16 +149,26 @@ def mark_debris():
     global debris, robot_x, robot_y, robot_theta
 
     rad = np.deg2rad(robot_theta)
-    dx = robot_x + 5 * np.cos(rad)
-    dy = robot_y + 5 * np.sin(rad)
+    dx = robot_x + 20 * np.cos(rad)
+    dy = robot_y + 20 * np.sin(rad)
 
     debris.append((dx, dy))
+    update_map()
+
+def mark_edge():
+    global edges, robot_x, robot_y, robot_theta
+
+    rad = np.deg2rad(robot_theta)
+    dx = robot_x + 20 * np.cos(rad)
+    dy = robot_y + 20 * np.sin(rad)
+
+    edges.append((dx, dy))
     update_map()
 
 # === SOCKET THREAD ===
 
 def socket_thread():
-    global gui_send_message, angles, distances
+    global gui_send_message, angles, ping_distances, ir_distances
 
     HOST = "192.168.1.1"
     PORT = 288
@@ -171,7 +188,8 @@ def socket_thread():
 
         if send_message == "s\n":
             angles.clear()
-            distances.clear()
+            ping_distances.clear()
+            ir_distances.clear()
 
             while True:
                 line = cybot.readline().decode().strip()
@@ -181,16 +199,23 @@ def socket_thread():
                 if line == "ENDSCAN":
                     break
 
+                parts = line.split(":")
+
+                if len(parts) != 3:
+                    print("Bad data:", line)
+                    continue
+
                 try:
-                    angle_str, dist_str = line.split(":")
-                    angle = float(angle_str)
-                    distance = float(dist_str)
+                    angle = float(parts[0])
+                    ping = float(parts[1])
+                    ir = float(parts[2])
 
                     if angle < 0 or angle > 178 or angle % 2 != 0:
                         continue
 
                     angles.append(np.deg2rad(angle))
-                    distances.append(distance)
+                    ping_distances.append(ping)
+                    ir_distances.append(ir)
 
                     window.after(0, update_plot)
 
@@ -216,26 +241,44 @@ def update_plot():
     ax.set_thetamin(0)
     ax.set_thetamax(180)
 
-    if distances:
-        ax.plot(angles, distances, color='red')
-        ax.scatter(angles, distances, c='blue', s=10)
-        ax.set_rmax(max(distances) + 10)
+    if ping_distances:
+        ax.plot(angles, ping_distances, color='blue', label='Ping')
+        ax.scatter(angles, ping_distances, c='blue', s=10)
 
+    if ir_distances:
+        ax.plot(angles, ir_distances, color='red', label='IR')
+        ax.scatter(angles, ir_distances, c='red', s=10)
+
+    if ping_distances or ir_distances:
+        #max_dist = max(ping_distances + ir_distances)
+        #ax.set_rmax(max_dist + 10)
+        ax.set_rmax(150)
+
+    ax.legend()
     canvas.draw()
 
 def update_map():
     map_ax.clear()
     map_ax.set_title("Field Map")
 
-    # Set bounds centered at (0,0)
     map_ax.set_xlim(-MAP_LIMIT, MAP_LIMIT)
     map_ax.set_ylim(-MAP_LIMIT, MAP_LIMIT)
 
-    # Draw robot (30 cm diameter)
+    # === GRID SETUP (61 cm squares) ===
+    grid_spacing = 61
+
+    x_ticks = np.arange(-MAP_LIMIT, MAP_LIMIT + grid_spacing, grid_spacing)
+    y_ticks = np.arange(-MAP_LIMIT, MAP_LIMIT + grid_spacing, grid_spacing)
+
+    map_ax.set_xticks(x_ticks)
+    map_ax.set_yticks(y_ticks)
+
+    map_ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+
+    # === ROBOT ===
     robot_circle = plt.Circle((robot_x, robot_y), 15, color='green')
     map_ax.add_patch(robot_circle)
 
-    # Draw heading line
     rad = np.deg2rad(robot_theta)
     map_ax.plot(
         [robot_x, robot_x + 20 * np.cos(rad)],
@@ -243,14 +286,18 @@ def update_map():
         color='green'
     )
 
-    # Draw obstacles
+    # === OBJECTS ===
     if obstacles:
         ox, oy = zip(*obstacles)
-        map_ax.scatter(ox, oy, c='red')
+        map_ax.scatter(ox, oy, c='red', s=20)
 
     if debris:
         dx, dy = zip(*debris)
-        map_ax.scatter(dx, dy, c='blue', s=20)
+        map_ax.scatter(dx, dy, c='blue', s=10)
+
+    if edges:
+        dx, dy = zip(*edges)
+        map_ax.scatter(dx, dy, c='black', s=5)
 
     map_ax.set_aspect('equal')
     map_canvas.draw()

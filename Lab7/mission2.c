@@ -98,7 +98,7 @@ void scanField2(rawScannerDatas *rawDatas){
 
         char temp[100];
         //sprintf(temp, "Angle: %d, ping: %.2f cm, IR avg: %.1f\n\r", currentAngle, rawDatas->rawPing[ave], rawDatas->rawIR[ave]);
-        sprintf(temp, "%d:%.1f\n\r", currentAngle, rawDatas->rawPing[ave]);
+        sprintf(temp, "%d:%.1f:%.1f\n\r", currentAngle, rawDatas->rawPing[ave], 110011 * pow(rawDatas->rawIR[ave], -1.17));
         sendMessage2(temp);
         //sendMessage2(temp);
     }
