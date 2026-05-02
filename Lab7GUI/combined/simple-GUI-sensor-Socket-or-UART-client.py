@@ -165,6 +165,15 @@ def mark_edge():
     edges.append((dx, dy))
     update_map()
 
+# === MOVEMENT HELPER ===
+
+def move_backward(distance):
+    global robot_x, robot_y, robot_theta
+
+    rad = np.deg2rad(robot_theta)
+    robot_x -= distance * np.cos(rad)
+    robot_y -= distance * np.sin(rad)
+
 # === SOCKET THREAD ===
 
 def socket_thread():
@@ -199,6 +208,33 @@ def socket_thread():
                 if line == "ENDSCAN":
                     break
 
+                # === HANDLE BUMP / EDGE ===
+                if line.startswith("BUMP:") or line.startswith("EDGE:"):
+                    try:
+                        msg_type, val = line.split(":")
+                        dist = float(val)
+
+                        # Mark position IN FRONT before moving
+                        rad = np.deg2rad(robot_theta)
+                        front_x = robot_x + dist * np.cos(rad)
+                        front_y = robot_y + dist * np.sin(rad)
+
+                        if msg_type == "BUMP":
+                            obstacles.append((front_x, front_y))
+                        elif msg_type == "EDGE":
+                            edges.append((front_x, front_y))
+
+                        # Move backward
+                        move_backward(dist)
+
+                        window.after(0, update_map)
+
+                    except:
+                        print("Bad special message:", line)
+
+                    continue
+
+                # === NORMAL SCAN DATA ===
                 parts = line.split(":")
 
                 if len(parts) != 3:
@@ -240,6 +276,7 @@ def update_plot():
     ax.set_title("CyBot Scan")
     ax.set_thetamin(0)
     ax.set_thetamax(180)
+    ax.set_rmax(150)
 
     if ping_distances:
         ax.plot(angles, ping_distances, color='blue', label='Ping')
@@ -248,11 +285,6 @@ def update_plot():
     if ir_distances:
         ax.plot(angles, ir_distances, color='red', label='IR')
         ax.scatter(angles, ir_distances, c='red', s=10)
-
-    if ping_distances or ir_distances:
-        #max_dist = max(ping_distances + ir_distances)
-        #ax.set_rmax(max_dist + 10)
-        ax.set_rmax(150)
 
     ax.legend()
     canvas.draw()
@@ -264,18 +296,16 @@ def update_map():
     map_ax.set_xlim(-MAP_LIMIT, MAP_LIMIT)
     map_ax.set_ylim(-MAP_LIMIT, MAP_LIMIT)
 
-    # === GRID SETUP (61 cm squares) ===
+    # Grid (61 cm)
     grid_spacing = 61
-
     x_ticks = np.arange(-MAP_LIMIT, MAP_LIMIT + grid_spacing, grid_spacing)
     y_ticks = np.arange(-MAP_LIMIT, MAP_LIMIT + grid_spacing, grid_spacing)
 
     map_ax.set_xticks(x_ticks)
     map_ax.set_yticks(y_ticks)
+    map_ax.grid(True, linestyle='--', linewidth=0.5)
 
-    map_ax.grid(True, which='both', linestyle='--', linewidth=0.5)
-
-    # === ROBOT ===
+    # Robot
     robot_circle = plt.Circle((robot_x, robot_y), 15, color='green')
     map_ax.add_patch(robot_circle)
 
@@ -286,7 +316,7 @@ def update_map():
         color='green'
     )
 
-    # === OBJECTS ===
+    # Objects
     if obstacles:
         ox, oy = zip(*obstacles)
         map_ax.scatter(ox, oy, c='red', s=20)
