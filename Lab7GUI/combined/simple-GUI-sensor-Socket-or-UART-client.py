@@ -262,25 +262,35 @@ def socket_thread():
                     break
 
                             # === HANDLE BUMP / EDGE ===
-                if line.startswith("BUMP:") or line.startswith("EDGE:") or line.startswith("CLIFF:"):
+                if line.startswith("BUMPL:") or line.startswith("BUMPR:") or line.startswith("EDGE:") or line.startswith("CLIFF:"):
                     try:
                         msg_type, val = line.split(":")
                         dist = float(val)
 
-                        # Mark position IN FRONT before moving
-                        rad = np.deg2rad(robot_theta)
-                        #front_x = robot_x + 20 * np.cos(rad)
-                        #front_y = robot_y + 20 * np.sin(rad)
-
-                        if msg_type == "BUMP":
+                        if msg_type == "BUMPL":
                             # Move backward
                             move_backward(dist)
 
-                            #reassign front x and y
+                            # 45° to the LEFT
+                            rad = np.deg2rad(robot_theta + 45)
+
                             front_x = robot_x + 20 * np.cos(rad)
                             front_y = robot_y + 20 * np.sin(rad)
 
                             obstacles.append((front_x, front_y))
+
+                        elif msg_type == "BUMPR":
+                            # Move backward
+                            move_backward(dist)
+
+                            # 45° to the RIGHT
+                            rad = np.deg2rad(robot_theta - 45)
+
+                            front_x = robot_x + 20 * np.cos(rad)
+                            front_y = robot_y + 20 * np.sin(rad)
+
+                            obstacles.append((front_x, front_y))
+
                         elif msg_type == "EDGE":
                             # Move backward
                             move_backward(dist)

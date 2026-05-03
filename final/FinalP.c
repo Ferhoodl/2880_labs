@@ -27,8 +27,9 @@ void main(void) {
     imu_writeReg(IMU_OPR_MODE, COMPASS);
     imu_setDefaultUnits();
 
-    servo_low_value = 285250; //bot 11
-    servo_high_value  = 1267000;
+
+    servo_low_value = 8000; //bot 11
+    servo_high_value  = 36500;
 
     oi_t *movement = oi_alloc();
     oi_init(movement);
@@ -36,8 +37,12 @@ void main(void) {
     movementTunes tunes = {
         .driveDriftMultiplier    = 0,     // 0 is nothing. <0 is correct to the right; >0 is correct to the left
         .driveDistanceMultiplier = 1.0,   // 1 is nothing. <1 is less distance, >1 is more distance.
-        .turnAngleMultiplier     = 1.0    // 1 is nothing. <1 is less angle, >1 is more angle.
+        .turnAngleMultiplier     = 0.965    // 1 is nothing. <1 is less angle, >1 is more angle.
     };
+
+
+
+
 
     manual_control(movement, &tunes);
     oi_free(movement);

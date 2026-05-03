@@ -64,7 +64,7 @@ uint32_t adc_read(void) {
 void cybot_scan_custom(int angle, cyBOT_Scan_t* getScan){
     servo_move(angle);
 
-    timer_waitMillis(50);
+    timer_waitMillis(35);
 
     uint16_t rawValues = adc_read();
     float pingDist = ping_getDistance();
@@ -184,7 +184,7 @@ void move_forward(oi_t *sensor_data, movementTunes *t, double distance_mm) {
     float currentHeading;
 
     double sum = 0;
-    double wheelspeed = 50;
+    double wheelspeed = 100;
     double driveAdjustVal = ((t->driveDriftMultiplier * wheelspeed) / 2);
 
     uint16_t IR_L;
@@ -286,14 +286,23 @@ void move_forward(oi_t *sensor_data, movementTunes *t, double distance_mm) {
 
         //lcd_printf("dist: %.1f cm", sum / 10.0);
 
-        if (sensor_data->bumpLeft || sensor_data->bumpRight) {
+        if (sensor_data->bumpLeft) {
             oi_setWheels(0, 0);
             double remaining_cm = (distance_mm - sum) / 10.0;
-            snprintf(msg, sizeof(msg), "BUMP:%.1f\r\n", remaining_cm);
+            snprintf(msg, sizeof(msg), "BUMPL:%.1f\r\n", remaining_cm);
             uart_sendStr(msg);
-            lcd_printf("BUMP! %.1fcm left", remaining_cm);
+            lcd_printf("BUMP LEFT! %.1fcm left", remaining_cm);
             return;
         }
+        else if (sensor_data->bumpRight)
+        {
+            oi_setWheels(0, 0);
+            double remaining_cm = (distance_mm - sum) / 10.0;
+            snprintf(msg, sizeof(msg), "BUMPR:%.1f\r\n", remaining_cm);
+            uart_sendStr(msg);
+            lcd_printf("BUMP RIGHT! %.1fcm left", remaining_cm);
+            return;
+            }
 
         if ((IR_L > IR_L_TAPE_LOW)  && (IR_L < IR_L_TAPE_HIGH) || (IR_R > IR_R_TAPE_LOW)  && (IR_R < IR_R_TAPE_HIGH) || (IR_FR > IR_FR_TAPE_LOW)  && (IR_FR < IR_FR_TAPE_HIGH) || (IR_FL > IR_FL_TAPE_LOW)  && (IR_FL < IR_FL_TAPE_HIGH)){
             oi_setWheels(0, 0);
