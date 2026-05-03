@@ -170,30 +170,22 @@ void escapeRight(oi_t *sensor_data, movementTunes *t){
 }*/
 
 
-
 void move_forward(oi_t *sensor_data, movementTunes *t, double distance_mm) {
     lcd_clear();
 
-    imu_writeReg(IMU_OPR_MODE, NDOF);
-    imu_setDefaultUnits();
-
-
     mag_t* mag;
     mag = imu_getMag();
-
 
     float startHeading = mag->heading;
     char dbg[100];
     snprintf(dbg, sizeof(dbg), "start heading - %.1f\r\n", startHeading);
     sendMessage2(dbg);
 
-
     float currentHeading;
 
     double sum = 0;
     double wheelspeed = 50;
     double driveAdjustVal = ((t->driveDriftMultiplier * wheelspeed) / 2);
-
 
     uint16_t IR_L;
     uint16_t IR_L_TAPE_LOW = 2400;
@@ -233,7 +225,7 @@ void move_forward(oi_t *sensor_data, movementTunes *t, double distance_mm) {
 
     float error;
     float headingCorrection;
-    const float correctionConstant = 1.0f;
+    const float correctionConstant = 0.5f;
 
     float left_speed;
     float right_speed;
@@ -241,11 +233,9 @@ void move_forward(oi_t *sensor_data, movementTunes *t, double distance_mm) {
 
     while (sum < distance_mm) {
 
-        mag = imu_getMag();
-
-
 
         currentHeading = mag->heading;
+        timer_waitMillis(200);
         char dbg2 [100];
         snprintf(dbg2, sizeof(dbg2), "current heading - %.1f\r\n", currentHeading);
         sendMessage2(dbg2);
@@ -257,23 +247,44 @@ void move_forward(oi_t *sensor_data, movementTunes *t, double distance_mm) {
         while (error < -180.0f) error += 360.0f;
 
         // determine multiplier for error
-        headingCorrection = correctionConstant * error;
+        if (fabsf(error) < 3.0f) {
+            headingCorrection = 0.0f;
+        } else {
+            headingCorrection = correctionConstant * error;
+        }
+        // clamp headings here
+        if (headingCorrection > 20) headingCorrection = 20;
+        if (headingCorrection < -20) headingCorrection = -20;
 
-        left_speed  = wheelspeed - headingCorrection;
-        right_speed = wheelspeed + headingCorrection;
+
+        left_speed  = wheelspeed + headingCorrection;
+        right_speed = wheelspeed - headingCorrection;
+
+
+        // clamp speeds here
+        if (left_speed > 100) left_speed = 100;
+        if (left_speed < -100) left_speed = -100;
+
+        if (right_speed > 100) right_speed = 100;
+        if (right_speed < -100) right_speed = -100;
+
+        snprintf(dbg2, sizeof(dbg2), "headingCorrection: - %.1f, left_wheelspeed: %.1f, right_wheelspeed: %.1f\r\n", headingCorrection, left_speed, right_speed);
+        sendMessage2(dbg2);
 
         oi_setWheels(right_speed, left_speed);
 
+        mag = imu_getMag();
+
+
         oi_update(sensor_data);
         sum += sensor_data->distance * t->driveDistanceMultiplier;
-
 
         IR_L = sensor_data->cliffLeftSignal;
         IR_FL = sensor_data->cliffFrontLeftSignal;
         IR_R = sensor_data->cliffRightSignal;
         IR_FR = sensor_data->cliffFrontRightSignal;
 
-        lcd_printf("dist: %.1f cm", sum / 10.0);
+        //lcd_printf("dist: %.1f cm", sum / 10.0);
 
         if (sensor_data->bumpLeft || sensor_data->bumpRight) {
             oi_setWheels(0, 0);
@@ -311,7 +322,7 @@ void move_backward(oi_t *sensor_data, movementTunes *t, double distance_mm){
     oi_setWheels(-50,-50);
         while (sum < distance_mm){
             oi_update(sensor_data);
-            sum += abs(sensor_data -> distance * t->driveDistanceMultiplier);
+            sum += fabs(sensor_data -> distance * t->driveDistanceMultiplier);
 
             lcd_printf("dist: %f", -sum);
         }
@@ -466,6 +477,9 @@ float ping_getDistance (void){
 // Servo
 // -----------------------------------------------------------------------------
 
+uint32_t servo_low_value = 0;
+uint32_t servo_high_value = 0;
+
 void servo_init(void){
 
     SYSCTL_RCGCTIMER_R |= 0x02;   // Timer 1
@@ -489,9 +503,20 @@ void servo_init(void){
        TIMER1_CTL_R |= 0x0100;
 }
 
-void servo_move(uint16_t degrees){
-    double highMillis = (double)degrees/180.0 + 1;              // number of milliseconds we want the high to be to achieve the given degrees
-    uint32_t highClockCycles = ((double)highMillis/1000.0)/(6.25 * 0.00000001); // number of clock cycles for above millis
+
+void servo_move(int32_t degrees){
+
+    uint32_t highClockCycles;
+    double highMillis = -1;
+
+
+    if(servo_low_value && servo_high_value){
+        highClockCycles = servo_low_value + ((servo_high_value - servo_low_value) * degrees) / 180.0;
+    }else{
+        highMillis = (double)degrees/180.0 + 1;              // number of milliseconds we want the high to be to achieve the given degrees
+        highClockCycles = ((double)highMillis/1000.0)/(6.25 * 0.00000001); // number of clock cycles for above millis
+    }
+
     uint32_t lowClockCycles =  0x4E200 - highClockCycles;// 20 (0x4E200) ms  - highClockMillis (we set the register with lowClockCycles. That causes the high to be highClockCycles).
 
     uint16_t first16 = 0xFFFF & lowClockCycles;
@@ -501,9 +526,6 @@ void servo_move(uint16_t degrees){
     TIMER1_TBPMR_R = last4; // gets the last 4 bits of the value
 
     lcd_printf("Hdeg: %d\nHms: %f\nHcycs: %d", degrees, highMillis, highClockCycles);
-
-    // this code is currently finding for the number of cycles for the high. We need to set the value for the low. Probably just do initial - clockCycles;
-
 
 
 }
@@ -903,6 +925,17 @@ void scanField2(rawScannerDatas *rawDatas){
 
 }
 
+//------------------sound
+void play_sound(void) {
+unsigned char notes[]     = {64, 67, 72};  // E4, G4, C5scending beep
+  unsigned char durations[] = {8,  8,  16};  // short-short-medium
+  oi_loadSong(2, 3, notes, durations);        // slot 2, separate from bump
+  timer_waitMillis(100);
+  oi_play_song(2);
+  timer_waitMillis(400);
+}
+
+
 // -----------------------------------------------------------------------------
 // Manual Control - GUI Command Mode
 // -----------------------------------------------------------------------------
@@ -957,10 +990,12 @@ void manual_control(oi_t *sensor_data, movementTunes *t) {
                 uart_sendStr(msg);
 
             } else {
-                snprintf(msg, sizeof(msg), "Driving backward %d cm...\r\n", -value_cm);
+                snprintf(msg, sizeof(msg), "BEGINDRIVE\r\n");
                 uart_sendStr(msg);
                 lcd_printf("BCK: %dcm", -value_cm);
                 move_backward(sensor_data, t, value_mm);
+                snprintf(msg, sizeof(msg), "ENDDRIVE\r\n");
+                uart_sendStr(msg);
             }
             uart_sendStr("Done.\r\n");
 
@@ -996,8 +1031,16 @@ void manual_control(oi_t *sensor_data, movementTunes *t) {
             scanField2(&rawDatas);
 
 
-        } else if(cmdBuf[0] == 'a'){
-            //make sound
+        }
+        else if (cmdBuf[0] == 'a')
+        {
+            char msg[48];
+            snprintf(msg, sizeof(msg), "BEGINA\r\n");
+            uart_sendStr(msg);
+            play_sound();
+            timer_waitMillis(1000);
+            snprintf(msg, sizeof(msg), "ENDA\r\n");
+            uart_sendStr(msg);
         }
             else {
             uart_sendStr("Unknown command. Use D:xx or T:xx\r\n");

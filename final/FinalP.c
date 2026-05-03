@@ -24,14 +24,19 @@ void main(void) {
     ping_init();
     uart_interrupt_init();
     imu_init();
+    imu_writeReg(IMU_OPR_MODE, COMPASS);
+    imu_setDefaultUnits();
+
+    servo_low_value = 285250; //bot 11
+    servo_high_value  = 1267000;
 
     oi_t *movement = oi_alloc();
     oi_init(movement);
 
     movementTunes tunes = {
         .driveDriftMultiplier    = 0,     // 0 is nothing. <0 is correct to the right; >0 is correct to the left
-        .driveDistanceMultiplier = 1.05,   // 1 is nothing. <1 is less distance, >1 is more distance.
-        .turnAngleMultiplier     = .95    // 1 is nothing. <1 is less angle, >1 is more angle.
+        .driveDistanceMultiplier = 1.0,   // 1 is nothing. <1 is less distance, >1 is more distance.
+        .turnAngleMultiplier     = 1.0    // 1 is nothing. <1 is less angle, >1 is more angle.
     };
 
     manual_control(movement, &tunes);

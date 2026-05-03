@@ -14,6 +14,12 @@
 #include "open_interface.h"
 #include "driverlib/interrupt.h"
 
+
+
+//---------------sound
+void play_sound(void);
+
+
 // ADC -----------------------------------------------------------------------------
 void adc_init(void);
 uint32_t adc_read(void);
@@ -51,8 +57,11 @@ float ping_getDistance(void);
 
 
 // SERVO-----------------------------------------------------------------------------
+extern uint32_t servo_low_value;
+extern uint32_t servo_high_value;
+
 void servo_init(void);
-void servo_move(uint16_t degrees);
+void servo_move(int32_t degrees);
 
 
 // UART (basic)-----------------------------------------------------------------------------
@@ -80,6 +89,8 @@ typedef struct {
 } rawScannerDatas;
 
 void scanField2(rawScannerDatas *rawDatas);
+
+void sendMessage2(char *c);
 
 
 #endif /* FINALFUNCTIONS_H_ */

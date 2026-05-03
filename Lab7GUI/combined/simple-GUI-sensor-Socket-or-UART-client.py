@@ -308,6 +308,19 @@ def socket_thread():
 
                     continue
 
+        if send_message == "a\n":
+            print("Running A function...")
+
+            while True:
+                line = cybot.readline().decode().strip()
+                print(line)
+
+                if line == "BEGINA":
+                    continue
+                if line == "ENDA":
+                    print("A command complete")
+                    break
+
         while gui_send_message == "wait\n":
             time.sleep(0.1)
 

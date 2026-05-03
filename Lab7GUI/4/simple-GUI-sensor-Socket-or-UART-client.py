@@ -1,163 +1,409 @@
-# Author: Phillip Jones
-# Date: 10/30/2023
-# Description: Client starter code that combines: 1) Simple GUI, 2) creation of a thread for
-#              running the Client socket in parallel with the GUI, and 3) Simple recieven of mock sensor 
-#              data for a server/cybot.for collecting data from the cybot.
-
-# General Python tutorials (W3schools):  https://www.w3schools.com/python/
-
-# Serial library:  https://pyserial.readthedocs.io/en/latest/shortintro.html 
-#import serial
-import time # Time library   
-# Socket library:  https://realpython.com/python-sockets/  
-# See: Background, Socket API Overview, and TCP Sockets  
+import time
 import socket
-import tkinter as tk # Tkinter GUI library
-# Thread library: https://www.geeksforgeeks.org/how-to-use-thread-in-tkinter-python/
+import tkinter as tk
 import threading
-import os  # import function for finding absolute path to this python script
+import numpy as np
+import matplotlib
 
-##### START Define Functions  #########
+matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-# Main: Mostly used for setting up, and starting the GUI
+# Globals
+gui_send_message = "wait\n"
+angles = []
+ping_distances = []
+ir_distances = []
+
+# Robot state
+robot_x = 0
+robot_y = 0
+robot_theta = 90  # facing "up" initially (degrees)
+
+obstacles = []
+debris = []
+edges = []
+cliffs = []
+
+# Field size (cm)
+FIELD_X = 426
+FIELD_Y = 245
+
+# Make map large enough to move a full field in any direction
+MAP_LIMIT = max(FIELD_X, FIELD_Y)
+
 def main():
+    global window, Last_command_Label, ax, canvas, map_ax, map_canvas
+    global turn_entry, drive_entry
 
-        global window  # Made global so quit function (send_quit) can access
-        window = tk.Tk() # Create a Tk GUI Window
+    window = tk.Tk()
+    window.title("CyBot Scanner")
 
-        # Last command label  
-        global Last_command_Label  # Made global so that Client function (socket_thread) can modify
-        Last_command_Label = tk.Label(text="Last Command Sent: ") # Creat a Label
-        Last_command_Label.pack() # Pack the label into the window for display
+    # === LEFT FRAME ===
+    left_frame = tk.Frame(window)
+    left_frame.pack(side="left")
 
-        # Quit command Button
-        quit_command_Button = tk.Button(text ="Press to Quit", command = send_quit)
-        quit_command_Button.pack()  # Pack the button into the window for display
+    Last_command_Label = tk.Label(left_frame, text="Last Command Sent:")
+    Last_command_Label.pack()
 
-        # Cybot Scan command Button
-        scan_command_Button = tk.Button(text ="Press to Scan", command = send_scan)
-        scan_command_Button.pack() # Pack the button into the window for display
+    tk.Button(left_frame, text="Scan", command=send_scan).pack()
+    tk.Button(left_frame, text="Alert", command=send_alert).pack()
+    tk.Button(left_frame, text="Quit", command=send_quit).pack()
 
+    # Polar plot
+    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+    ax.set_title("CyBot Scan")
+    ax.set_thetamin(0)
+    ax.set_thetamax(180)
 
-        # Create a Thread that will run a fuction assocated with a user defined "target" function.
-        # In this case, the target function is the Client socket code
-        my_thread = threading.Thread(target=socket_thread) # Creat the thread
-        my_thread.start() # Start the thread
+    canvas = FigureCanvasTkAgg(fig, master=left_frame)
+    canvas.get_tk_widget().pack()
 
-        # Start event loop so the GUI can detect events such as button clicks, key presses, etc.
-        window.mainloop()
+    # === RIGHT FRAME ===
+    right_frame = tk.Frame(window)
+    right_frame.pack(side="right")
 
+    # Map plot
+    map_fig, map_ax = plt.subplots()
+    map_ax.set_title("Field Map")
 
-# Quit Button action.  Tells the client to send a Quit request to the Cybot, and exit the GUI
-def send_quit():
-        global gui_send_message # Command that the GUI has requested be sent to the Cybot
-        global window  # Main GUI window
-        
-        gui_send_message = "quit\n"   # Update the message for the Client to send
-        time.sleep(1)
-        window.destroy() # Exit GUI
+    map_canvas = FigureCanvasTkAgg(map_fig, master=right_frame)
+    map_canvas.get_tk_widget().pack()
 
+    # Controls
+    tk.Label(right_frame, text="Turn (degrees):").pack()
+    turn_entry = tk.Entry(right_frame)
+    turn_entry.pack()
+    tk.Button(right_frame, text="Turn", command=send_turn).pack()
 
-# Scan Button action.  Tells the client to send a scan request to the Cybot
+    tk.Label(right_frame, text="Drive (cm):").pack()
+    drive_entry = tk.Entry(right_frame)
+    drive_entry.pack()
+    tk.Button(right_frame, text="Drive", command=send_drive).pack()
+
+    tk.Button(right_frame, text="Mark Obstacle", command=mark_obstacle).pack()
+    tk.Button(right_frame, text="Mark Debris", command=mark_debris).pack()
+    tk.Button(right_frame, text="Mark Edge", command=mark_edge).pack()
+    tk.Button(right_frame, text="Mark Cliff", command=mark_cliff).pack()
+
+    update_map()
+
+    threading.Thread(target=socket_thread, daemon=True).start()
+
+    window.mainloop()
+
+# === COMMANDS ===
+
 def send_scan():
-        global gui_send_message # Command that the GUI has requested sent to the Cybot
-        
-        gui_send_message = "M\n"   # Update the message for the Client to send
+    global gui_send_message
+    gui_send_message = "s\n"
 
+def send_alert():
+    global gui_send_message
+    gui_send_message = "a\n"
 
+def send_quit():
+    global gui_send_message, window
+    gui_send_message = "quit\n"
+    time.sleep(0.5)
+    window.destroy()
 
-# Client socket code (Run by a thread created in main)
+def send_turn():
+    global gui_send_message, robot_theta
+    try:
+        val = float(turn_entry.get())
+        msg = f"T:{val:+.0f}\n"
+        gui_send_message = msg
+
+        robot_theta += val
+        update_map()
+
+    except:
+        print("Invalid turn input")
+
+def send_drive():
+    global gui_send_message, robot_x, robot_y, robot_theta
+    try:
+        val = float(drive_entry.get())
+        msg = f"D:{val:.0f}\n"
+        gui_send_message = msg
+
+        rad = np.deg2rad(robot_theta)
+        robot_x += val * np.cos(rad)
+        robot_y += val * np.sin(rad)
+
+        update_map()
+
+    except:
+        print("Invalid drive input")
+
+def mark_obstacle():
+    global obstacles, robot_x, robot_y, robot_theta
+
+    rad = np.deg2rad(robot_theta)
+    ox = robot_x + 25 * np.cos(rad)
+    oy = robot_y + 25 * np.sin(rad)
+
+    obstacles.append((ox, oy))
+    update_map()
+
+def mark_debris():
+    global debris, robot_x, robot_y, robot_theta
+
+    rad = np.deg2rad(robot_theta)
+    dx = robot_x + 20 * np.cos(rad)
+    dy = robot_y + 20 * np.sin(rad)
+
+    debris.append((dx, dy))
+    update_map()
+
+def mark_edge():
+    global edges, robot_x, robot_y, robot_theta
+
+    rad = np.deg2rad(robot_theta)
+    dx = robot_x + 20 * np.cos(rad)
+    dy = robot_y + 20 * np.sin(rad)
+
+    edges.append((dx, dy))
+    update_map()
+
+def mark_cliff():
+    global cliffs, robot_x, robot_y, robot_theta
+
+    rad = np.deg2rad(robot_theta)
+    dx = robot_x + 20 * np.cos(rad)
+    dy = robot_y + 20 * np.sin(rad)
+
+    cliffs.append((dx, dy))
+    update_map()
+
+# === MOVEMENT HELPER ===
+
+def move_backward(distance):
+    global robot_x, robot_y, robot_theta
+
+    rad = np.deg2rad(robot_theta)
+    robot_x -= distance * np.cos(rad)
+    robot_y -= distance * np.sin(rad)
+
+# === SOCKET THREAD ===
+
 def socket_thread():
-        # Define Globals
-        global Last_command_Label # GUI label for displaying the last command sent to the Cybot
-        global gui_send_message   # Command that the GUI has requested be sent to the Cybot
+    global gui_send_message, angles, ping_distances, ir_distances
 
-        # A little python magic to make it more convient for you to adjust where you want the data file to live
-        # Link for more info: https://towardsthecloud.com/get-relative-path-python 
-        absolute_path = os.path.dirname(__file__) # Absoult path to this python script
-        relative_path = "./"   # Path to sensor data file relative to this python script (./ means data file is in the same directory as this python script)
-        full_path = os.path.join(absolute_path, relative_path) # Full path to sensor data file
-        filename = 'sensor-scan.txt' # Name of file you want to store sensor data from your sensor scan command
+    HOST = "192.168.1.1"
+    PORT = 288
 
-        # Choose to create either a UART or TCP port socket to communicate with Cybot (Not both!!)
-        # UART BEGIN
-        #cybot = serial.Serial('COM100', 115200)  # UART (Make sure you are using the correct COM port and Baud rate!!)
-        # UART END
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((HOST, PORT))
+    cybot = sock.makefile("rbw", buffering=0)
 
-        # TCP Socket BEGIN (See Echo Client example): https://realpython.com/python-sockets/#echo-client-and-server
-        #HOST = "127.0.0.1"  # The server's hostname or IP address
-        #PORT = 65432        # The port used by the server
-        HOST = "192.168.1.1"  # The server's hostname or IP address
-        PORT = 288        # The port used by the server
-        cybot_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Create a socket object
-        cybot_socket.connect((HOST, PORT))   # Connect to the socket  (Note: Server must first be running)
-                      
-        cybot = cybot_socket.makefile("rbw", buffering=0)  # makefile creates a file object out of a socket:  https://pythontic.com/modules/socket/makefile
-        # TCP Socket END
+    cybot.write("H\n".encode())
 
-        # Send some text: Either 1) Choose "Hello" or 2) have the user enter text to send
-        send_message = "Hello\n"                            # 1) Hard code message to "Hello", or
-        # send_message = input("Enter a message:") + '\n'   # 2) Have user enter text
-        gui_send_message = "wait\n"  # Initialize GUI command message to wait                                
+    send_message = ""
 
-        cybot.write(send_message.encode()) # Convert String to bytes (i.e., encode), and send data to the server
+    while send_message != "quit\n":
 
-        print("Sent to server: " + send_message) 
+        window.after(0, lambda msg=send_message:
+            Last_command_Label.config(text="Last Command Sent: " + msg))
 
-        # Send messges to server until user sends "quit"
-        while send_message != 'quit\n':
+        if send_message == "s\n":
+            angles.clear()
+            ping_distances.clear()
+            ir_distances.clear()
+
+            while True:
+                line = cybot.readline().decode().strip()
+
+                if line == "BEGINSCAN":
+                    continue
+                if line == "ENDSCAN":
+                    break
+
+                # === NORMAL SCAN DATA ===
+                parts = line.split(":")
+
+                if len(parts) != 3:
+                    print("Bad data:", line)
+                    continue
+
+                try:
+                    angle = float(parts[0])
+                    ping = float(parts[1])
+                    ir = float(parts[2])
+
+                    if angle < 0 or angle > 178 or angle % 2 != 0:
+                        continue
+                    
+                    if(ping > 150):
+                        ping = 150
+                    
+                    if(ir > 150):
+                        ir = 150
+                    
+
+
+                    angles.append(np.deg2rad(angle))
+                    ping_distances.append(ping)
+                    ir_distances.append(ir)
+
+                    window.after(0, update_plot)
+
+                except:
+                    print("Bad data:", line)
+        if ("D:" in send_message):
+            while(True):
+                line = cybot.readline().decode().strip()
+                print(line)
                 
-                # Update the GUI to display command being sent to the CyBot
-                command_display = "Last Command Sent:\t" + send_message
-                Last_command_Label.config(text = command_display)  
-        
-                # Check if a sensor scan command has been sent
-                if (send_message == "M\n") or (send_message == "m\n"):
+                if line == "BEGINDRIVE":
+                    continue
+                if line == "ENDDRIVE":
+                    break
 
-                        print("Requested Sensor scan from Cybot:\n")
-                        rx_message = bytearray(1) # Initialize a byte array
+                            # === HANDLE BUMP / EDGE ===
+                if line.startswith("BUMP:") or line.startswith("EDGE:") or line.startswith("CLIFF:"):
+                    try:
+                        msg_type, val = line.split(":")
+                        dist = float(val)
 
-                        # Create or overwrite existing sensor scan data file
-                        file_object = open(full_path + filename,'w') # Open the file: file_object is just a variable for the file "handler" returned by open()
+                        # Mark position IN FRONT before moving
+                        rad = np.deg2rad(robot_theta)
+                        #front_x = robot_x + 20 * np.cos(rad)
+                        #front_y = robot_y + 20 * np.sin(rad)
 
-                        while (rx_message.decode() != "END\n"): # Collect sensor data until "END" recieved
-                                rx_message = cybot.readline()   # Wait for sensor response, readline expects message to end with "\n"
-                                file_object.write(rx_message.decode())  # Write a line of sensor data to the file
-                                print(rx_message.decode()) # Convert message from bytes to String (i.e., decode), then print
+                        if msg_type == "BUMP":
+                            # Move backward
+                            move_backward(dist)
 
-                        file_object.close() # Important to close file once you are done with it!!                
+                            #reassign front x and y
+                            front_x = robot_x + 20 * np.cos(rad)
+                            front_y = robot_y + 20 * np.sin(rad)
 
-                else:                
-                        print("Waiting for server reply\n")
-                        rx_message = cybot.readline()      # Wait for a message, readline expects message to end with "\n"
-                        print("Got a message from server: " + rx_message.decode() + "\n") # Convert message from bytes to String (i.e., decode)
+                            obstacles.append((front_x, front_y))
+                        elif msg_type == "EDGE":
+                            # Move backward
+                            move_backward(dist)
 
+                            #reassign front x and y
+                            front_x = robot_x + 20 * np.cos(rad)
+                            front_y = robot_y + 20 * np.sin(rad)
 
-                # Choose either: 1) Idle wait, or 2) Request a periodic status update from the Cybot
-                # 1) Idle wait: for gui_send_message to be updated by the GUI
-                while gui_send_message == "wait\n": 
-                        time.sleep(.1)  # Sleep for .1 seconds
-                send_message = gui_send_message
+                            edges.append((front_x, front_y))
+                        
+                        elif msg_type == "CLIFF":
+                            # Move backward
+                            move_backward(dist)
 
-                # 2) Request a periodic Status update from the Cybot:
-                # every .1 seconds if GUI has not requested to send a new command
-                #time.sleep(.1)
-                #if(gui_send_message == "wait\n"):   # GUI has not requested a new command
-                #        send_message = "status\n"   # Request a status update from the Cybot
-                #else:
-                #        send_message = gui_send_message  # GUI has requested a new command
+                            #reassign front x and y
+                            front_x = robot_x + 20 * np.cos(rad)
+                            front_y = robot_y + 20 * np.sin(rad)
 
-                gui_send_message = "wait\n"  # Reset gui command message request to wait                        
+                            cliffs.append((front_x, front_y))
 
-                cybot.write(send_message.encode()) # Convert String to bytes (i.e., encode), and send data to the server
+                        window.after(0, update_map)
+
+                    except:
+                        print("Bad special message:", line)
+
+                    continue
+
+        if send_message == "a\n":
+            print("Running A function...")
+
+            while True:
+                line = cybot.readline().decode().strip()
+                print(line)
+
+                if line == "BEGINA":
+                    continue
+                if line == "ENDA":
+                    print("A command complete")
+                    break
+
                 
-        print("Client exiting, and closing file descriptor, and/or network socket\n")
-        time.sleep(2) # Sleep for 2 seconds
-        cybot.close() # Close file object associated with the socket or UART
-        cybot_socket.close()  # Close the socket (NOTE: comment out if using UART interface, only use for network socket option)
 
-##### END Define Functions  #########
+                
 
+           
 
-### Run main ###
+        while gui_send_message == "wait\n":
+            time.sleep(0.1)
+
+        send_message = gui_send_message
+        gui_send_message = "wait\n"
+
+        cybot.write(send_message.encode())
+
+    cybot.close()
+    sock.close()
+
+# === PLOTTING ===
+
+def update_plot():
+    ax.clear()
+    ax.set_title("CyBot Scan")
+    ax.set_thetamin(0)
+    ax.set_thetamax(180)
+    ax.set_rmax(150)
+
+    if ping_distances:
+        ax.plot(angles, ping_distances, color='blue', label='Ping')
+        ax.scatter(angles, ping_distances, c='blue', s=10)
+
+    if ir_distances:
+        ax.plot(angles, ir_distances, color='red', label='IR')
+        ax.scatter(angles, ir_distances, c='red', s=10)
+
+    ax.legend()
+    canvas.draw()
+
+def update_map():
+    map_ax.clear()
+    map_ax.set_title("Field Map")
+
+    map_ax.set_xlim(-MAP_LIMIT, MAP_LIMIT)
+    map_ax.set_ylim(-MAP_LIMIT, MAP_LIMIT)
+
+    # Grid (61 cm)
+    grid_spacing = 61
+    x_ticks = np.arange(-MAP_LIMIT, MAP_LIMIT + grid_spacing, grid_spacing)
+    y_ticks = np.arange(-MAP_LIMIT, MAP_LIMIT + grid_spacing, grid_spacing)
+
+    map_ax.set_xticks(x_ticks)
+    map_ax.set_yticks(y_ticks)
+    map_ax.grid(True, linestyle='--', linewidth=0.5)
+
+    # Robot
+    robot_circle = plt.Circle((robot_x, robot_y), 15, color='green')
+    map_ax.add_patch(robot_circle)
+
+    rad = np.deg2rad(robot_theta)
+    map_ax.plot(
+        [robot_x, robot_x + 20 * np.cos(rad)],
+        [robot_y, robot_y + 20 * np.sin(rad)],
+        color='green'
+    )
+
+    # Objects
+    if obstacles:
+        ox, oy = zip(*obstacles)
+        map_ax.scatter(ox, oy, c='red', s=20)
+
+    if debris:
+        dx, dy = zip(*debris)
+        map_ax.scatter(dx, dy, c='blue', s=10)
+
+    if edges:
+        dx, dy = zip(*edges)
+        map_ax.scatter(dx, dy, c='orange', s=10)
+
+    if cliffs:
+        dx, dy = zip(*cliffs)
+        map_ax.scatter(dx, dy, c='black', s=10)
+
+    map_ax.set_aspect('equal')
+    map_canvas.draw()
+
+# Run
 main()

@@ -52,7 +52,7 @@ void addr_set(uint8_t addr) {
      // Set PB6 to HIGH
      GPIO_PORTB_DATA_R |= 0x40;
      addr_set(BNO055_ADDRESS_B);
-     imu_reset();
+     //imu_reset();
  }
 
 static float vectorMag(float x, float y, float z) {
