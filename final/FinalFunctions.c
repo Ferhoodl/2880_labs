@@ -9,6 +9,8 @@
 #include "Timer.h"
 #include "lcd.h"
 #include "stdio.h"
+#include "imu.h"
+#include "lcd.h"
 
 #define IR_SAMPLES 3
 
@@ -62,7 +64,7 @@ uint32_t adc_read(void) {
 void cybot_scan_custom(int angle, cyBOT_Scan_t* getScan){
     servo_move(angle);
 
-    timer_waitMillis(100);
+    timer_waitMillis(50);
 
     uint16_t rawValues = adc_read();
     float pingDist = ping_getDistance();
@@ -166,25 +168,138 @@ void escapeRight(oi_t *sensor_data, movementTunes *t){
         }
     oi_setWheels(0,0);
 }*/
+
+
+
 void move_forward(oi_t *sensor_data, movementTunes *t, double distance_mm) {
+    lcd_clear();
+
+    imu_writeReg(IMU_OPR_MODE, NDOF);
+    imu_setDefaultUnits();
+
+
+    mag_t* mag;
+    mag = imu_getMag();
+
+
+    float startHeading = mag->heading;
+    char dbg[100];
+    snprintf(dbg, sizeof(dbg), "start heading - %.1f\r\n", startHeading);
+    sendMessage2(dbg);
+
+
+    float currentHeading;
+
     double sum = 0;
     double wheelspeed = 50;
     double driveAdjustVal = ((t->driveDriftMultiplier * wheelspeed) / 2);
-    oi_setWheels(wheelspeed + driveAdjustVal, wheelspeed - driveAdjustVal);
+
+
+    uint16_t IR_L;
+    uint16_t IR_L_TAPE_LOW = 2400;
+    uint16_t IR_L_TAPE_HIGH = 3650;
+    uint16_t IR_L_CLIFF_LOW = 0;
+    uint16_t IR_L_CLIFF_HIGH = 10;
+
+    uint16_t IR_FL;
+    uint16_t IR_FL_TAPE_LOW = 2600;
+    uint16_t IR_FL_TAPE_HIGH = 2900;
+    uint16_t IR_FL_CLIFF_LOW = 0;
+    uint16_t IR_FL_CLIFF_HIGH = 10;
+
+    uint16_t IR_FR;
+    uint16_t IR_FR_TAPE_LOW = 2500;
+    uint16_t IR_FR_TAPE_HIGH = 2750;
+    uint16_t IR_FR_CLIFF_LOW = 0;
+    uint16_t IR_FR_CLIFF_HIGH = 10;
+
+    uint16_t IR_R;
+    uint16_t IR_R_TAPE_LOW = 700;
+    uint16_t IR_R_TAPE_HIGH = 950;
+    uint16_t IR_R_CLIFF_LOW = 0;
+    uint16_t IR_R_CLIFF_HIGH = 10;
+
+
+    IR_FL = sensor_data->cliffFrontLeftSignal;
+    IR_L = sensor_data->cliffLeftSignal;
+    IR_FR = sensor_data->cliffFrontRightSignal;
+    IR_R = sensor_data->cliffRightSignal;
+
+
+    //oi_setWheels(wheelspeed + driveAdjustVal, wheelspeed - driveAdjustVal);
+
+
+    char msg[64];
+
+    float error;
+    float headingCorrection;
+    const float correctionConstant = 1.0f;
+
+    float left_speed;
+    float right_speed;
+
 
     while (sum < distance_mm) {
+
+        mag = imu_getMag();
+
+
+
+        currentHeading = mag->heading;
+        char dbg2 [100];
+        snprintf(dbg2, sizeof(dbg2), "current heading - %.1f\r\n", currentHeading);
+        sendMessage2(dbg2);
+
+        error = startHeading - currentHeading;
+
+        // Normalize to [-180, 180]
+        while (error > 180.0f) error -= 360.0f;
+        while (error < -180.0f) error += 360.0f;
+
+        // determine multiplier for error
+        headingCorrection = correctionConstant * error;
+
+        left_speed  = wheelspeed - headingCorrection;
+        right_speed = wheelspeed + headingCorrection;
+
+        oi_setWheels(right_speed, left_speed);
+
         oi_update(sensor_data);
         sum += sensor_data->distance * t->driveDistanceMultiplier;
+
+
+        IR_L = sensor_data->cliffLeftSignal;
+        IR_FL = sensor_data->cliffFrontLeftSignal;
+        IR_R = sensor_data->cliffRightSignal;
+        IR_FR = sensor_data->cliffFrontRightSignal;
+
         lcd_printf("dist: %.1f cm", sum / 10.0);
 
         if (sensor_data->bumpLeft || sensor_data->bumpRight) {
             oi_setWheels(0, 0);
             double remaining_cm = (distance_mm - sum) / 10.0;
-            char msg[64];
             snprintf(msg, sizeof(msg), "BUMP:%.1f\r\n", remaining_cm);
             uart_sendStr(msg);
             lcd_printf("BUMP! %.1fcm left", remaining_cm);
             return;
+        }
+
+        if ((IR_L > IR_L_TAPE_LOW)  && (IR_L < IR_L_TAPE_HIGH) || (IR_R > IR_R_TAPE_LOW)  && (IR_R < IR_R_TAPE_HIGH) || (IR_FR > IR_FR_TAPE_LOW)  && (IR_FR < IR_FR_TAPE_HIGH) || (IR_FL > IR_FL_TAPE_LOW)  && (IR_FL < IR_FL_TAPE_HIGH)){
+            oi_setWheels(0, 0);
+            double remaining_cm = (distance_mm - sum) / 10.0;
+            snprintf(msg, sizeof(msg), "EDGE:%.1f\r\n", remaining_cm);
+            uart_sendStr(msg);
+            return;
+
+        }
+
+        if ((IR_L > IR_L_CLIFF_LOW)  && (IR_L < IR_L_CLIFF_HIGH) || (IR_R > IR_R_CLIFF_LOW)  && (IR_R < IR_R_CLIFF_HIGH) || (IR_FR > IR_FR_CLIFF_LOW)  && (IR_FR < IR_FR_CLIFF_HIGH) || (IR_FL > IR_FL_CLIFF_LOW)  && (IR_FL < IR_FL_CLIFF_HIGH)){
+            oi_setWheels(0, 0);
+            double remaining_cm = (distance_mm - sum) / 10.0;
+            snprintf(msg, sizeof(msg), "CLIFF:%.1f\r\n", remaining_cm);
+            uart_sendStr(msg);
+            return;
+
         }
     }
 
@@ -793,7 +908,7 @@ void scanField2(rawScannerDatas *rawDatas){
 // -----------------------------------------------------------------------------
 
 void manual_control(oi_t *sensor_data, movementTunes *t) {
-    char cmdBuf[32];
+    char cmdBuf[32] = {0};
     int  cmdIdx = 0;
 
     lcd_puts("testing1");

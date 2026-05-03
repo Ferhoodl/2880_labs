@@ -23,6 +23,7 @@ robot_theta = 90  # facing "up" initially (degrees)
 obstacles = []
 debris = []
 edges = []
+cliffs = []
 
 # Field size (cm)
 FIELD_X = 426
@@ -83,6 +84,7 @@ def main():
     tk.Button(right_frame, text="Mark Obstacle", command=mark_obstacle).pack()
     tk.Button(right_frame, text="Mark Debris", command=mark_debris).pack()
     tk.Button(right_frame, text="Mark Edge", command=mark_edge).pack()
+    tk.Button(right_frame, text="Mark Cliff", command=mark_cliff).pack()
 
     update_map()
 
@@ -165,6 +167,16 @@ def mark_edge():
     edges.append((dx, dy))
     update_map()
 
+def mark_cliff():
+    global cliffs, robot_x, robot_y, robot_theta
+
+    rad = np.deg2rad(robot_theta)
+    dx = robot_x + 20 * np.cos(rad)
+    dy = robot_y + 20 * np.sin(rad)
+
+    cliffs.append((dx, dy))
+    update_map()
+
 # === MOVEMENT HELPER ===
 
 def move_backward(distance):
@@ -242,6 +254,7 @@ def socket_thread():
         if ("D:" in send_message):
             while(True):
                 line = cybot.readline().decode().strip()
+                print(line)
                 
                 if line == "BEGINDRIVE":
                     continue
@@ -249,23 +262,23 @@ def socket_thread():
                     break
 
                             # === HANDLE BUMP / EDGE ===
-                if line.startswith("BUMP:") or line.startswith("EDGE:"):
+                if line.startswith("BUMP:") or line.startswith("EDGE:") or line.startswith("CLIFF:"):
                     try:
                         msg_type, val = line.split(":")
                         dist = float(val)
 
                         # Mark position IN FRONT before moving
                         rad = np.deg2rad(robot_theta)
-                        front_x = robot_x + dist * np.cos(rad)
-                        front_y = robot_y + dist * np.sin(rad)
+                        #front_x = robot_x + 20 * np.cos(rad)
+                        #front_y = robot_y + 20 * np.sin(rad)
 
                         if msg_type == "BUMP":
                             # Move backward
                             move_backward(dist)
 
                             #reassign front x and y
-                            front_x = robot_x + dist * np.cos(rad)
-                            front_y = robot_y + dist * np.sin(rad)
+                            front_x = robot_x + 20 * np.cos(rad)
+                            front_y = robot_y + 20 * np.sin(rad)
 
                             obstacles.append((front_x, front_y))
                         elif msg_type == "EDGE":
@@ -273,11 +286,20 @@ def socket_thread():
                             move_backward(dist)
 
                             #reassign front x and y
-                            front_x = robot_x + dist * np.cos(rad)
-                            front_y = robot_y + dist * np.sin(rad)
+                            front_x = robot_x + 20 * np.cos(rad)
+                            front_y = robot_y + 20 * np.sin(rad)
 
                             edges.append((front_x, front_y))
+                        
+                        elif msg_type == "CLIFF":
+                            # Move backward
+                            move_backward(dist)
 
+                            #reassign front x and y
+                            front_x = robot_x + 20 * np.cos(rad)
+                            front_y = robot_y + 20 * np.sin(rad)
+
+                            cliffs.append((front_x, front_y))
 
                         window.after(0, update_map)
 
@@ -355,7 +377,11 @@ def update_map():
 
     if edges:
         dx, dy = zip(*edges)
-        map_ax.scatter(dx, dy, c='black', s=5)
+        map_ax.scatter(dx, dy, c='orange', s=10)
+
+    if cliffs:
+        dx, dy = zip(*cliffs)
+        map_ax.scatter(dx, dy, c='black', s=10)
 
     map_ax.set_aspect('equal')
     map_canvas.draw()
